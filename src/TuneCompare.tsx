@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import {
   findRegisteredDefinition,
   loadRegisteredDefinition,
@@ -366,7 +367,7 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
 
   async function loadMsq(
     file: File | undefined,
-    setSide: React.Dispatch<React.SetStateAction<SideState>>,
+    setSide: Dispatch<SetStateAction<SideState>>,
   ) {
     if (!file) return;
 
@@ -425,7 +426,7 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
 
   async function loadIni(
     file: File | undefined,
-    setSide: React.Dispatch<React.SetStateAction<SideState>>,
+    setSide: Dispatch<SetStateAction<SideState>>,
   ) {
     if (!file) return;
 
