@@ -1,7 +1,9 @@
+import type { ValidationStatus } from './model';
+
 export type PublicSubmissionResult = {
   ok: boolean;
   tuneId: string;
-  validationStatus: 'Unverified';
+  validationStatus: ValidationStatus;
   commitSha: string;
   commitUrl: string;
 };
