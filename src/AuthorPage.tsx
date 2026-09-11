@@ -7,6 +7,12 @@ import {
   vehicleCollectionPath,
 } from './tuneDiscovery';
 import { findPublishedTune, loadTuneIndex } from './tuneLibrary';
+import {
+  firmwareSummary,
+  formatTuneDate,
+  tuneMetrics,
+  validationClass,
+} from './tunePresentation';
 
 type AuthorPageProps = {
   author: string;
@@ -77,6 +83,8 @@ function AuthorTuneCard({
     tune.engine?.cylinders ? `${tune.engine.cylinders} cyl` : '',
     tune.engine?.aspiration,
   ].filter(Boolean).join(' · ');
+  const metrics = tuneMetrics(tune);
+  const updated = tune.updatedAt && tune.updatedAt !== tune.publishedAt;
 
   return (
     <article className="author-tune-card">
@@ -100,7 +108,9 @@ function AuthorTuneCard({
         </div>
         <div className="tune-card-badges">
           <span className="badge">{tune.classification}</span>
-          <span className="badge badge-ok">{tune.validationStatus}</span>
+          <span className={`badge validation-badge ${validationClass(tune.validationStatus)}`}>
+            {tune.validationStatus}
+          </span>
         </div>
       </div>
 
@@ -125,6 +135,26 @@ function AuthorTuneCard({
         )}
         <span>{formatDate(tune.publishedAt)}</span>
         {tune.parentTuneId && <span>Revision of {tune.parentTuneId}</span>}
+      </div>
+
+      {metrics.length > 0 && (
+        <div className="author-tune-metrics">
+          {metrics.slice(0, 3).map((metric) => (
+            <div key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="author-tune-firmware" title={tune.firmwareSignature}>
+        {firmwareSummary(tune.firmwareSignature)}
+      </div>
+
+      <div className="author-tune-updated">
+        <span>Published {formatTuneDate(tune.publishedAt)}</span>
+        {updated && <span>Edited {formatTuneDate(tune.updatedAt)}</span>}
       </div>
 
       <button
