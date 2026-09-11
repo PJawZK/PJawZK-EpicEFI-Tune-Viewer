@@ -35,7 +35,7 @@ const normalized = normalizePublicMetadata(baseMetadata, {
   hasIni: true,
   publishedAt: '2026-09-12',
 });
-assert.equal(normalized.validationStatus, 'Unverified');
+assert.equal(normalized.validationStatus, 'Dyno Tested');
 assert.equal(normalized.publishedAt, '2026-09-12');
 assert.equal(normalized.updatedAt, undefined);
 assert.deepEqual(normalized.files, {
@@ -74,7 +74,22 @@ const registryBacked = validatePublicPackage({
   },
   publishedAt: '2026-09-12',
 });
-assert.equal(registryBacked.validationStatus, 'Unverified');
+assert.equal(registryBacked.validationStatus, 'Dyno Tested');
+
+assert.throws(
+  () => validatePublicPackage({
+    metadata: {
+      ...baseMetadata,
+      id: 'reserved-validation',
+      validationStatus: 'EpicEFI Verified',
+    },
+    msqText: msq,
+    iniText: ini,
+    registry: { definitions: [] },
+    publishedAt: '2026-09-12',
+  }),
+  /EpicEFI Verified is reserved/,
+);
 
 assert.throws(
   () => validatePublicPackage({
