@@ -111,7 +111,7 @@ export default function TurnstileWidget({
   }, [onToken, resetKey, siteKey]);
 
   return (
-    <div>
+    <div className="turnstile-wrap">
       <div ref={containerRef} />
       {loadError && <div className="mismatch">{loadError}</div>}
     </div>
