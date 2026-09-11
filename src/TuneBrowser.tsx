@@ -125,6 +125,71 @@ function CalibrationTable({
   );
 }
 
+type AxisScale = {
+  min: number;
+  max: number;
+  tickCount: number;
+  ticks: number[];
+  source: 'ini' | 'data';
+};
+
+function buildAxisScale(spec: string[], data: number[]): AxisScale {
+  const specifiedMin = Number.parseFloat(spec[0] ?? '');
+  const specifiedMax = Number.parseFloat(spec[1] ?? '');
+  const specifiedTicks = Number.parseInt(spec[2] ?? '', 10);
+  const tickCount = Number.isFinite(specifiedTicks)
+    ? Math.min(12, Math.max(2, specifiedTicks))
+    : 6;
+
+  if (
+    Number.isFinite(specifiedMin)
+    && Number.isFinite(specifiedMax)
+    && specifiedMax > specifiedMin
+  ) {
+    return {
+      min: specifiedMin,
+      max: specifiedMax,
+      tickCount,
+      ticks: Array.from(
+        { length: tickCount },
+        (_, index) => specifiedMin + ((specifiedMax - specifiedMin) * index) / (tickCount - 1),
+      ),
+      source: 'ini',
+    };
+  }
+
+  let min = Math.min(...data);
+  let max = Math.max(...data);
+
+  if (min === max) {
+    const padding = Math.max(Math.abs(min) * 0.1, 1);
+    min -= padding;
+    max += padding;
+  } else {
+    const padding = (max - min) * 0.05;
+    min -= padding;
+    max += padding;
+  }
+
+  return {
+    min,
+    max,
+    tickCount,
+    ticks: Array.from(
+      { length: tickCount },
+      (_, index) => min + ((max - min) * index) / (tickCount - 1),
+    ),
+    source: 'data',
+  };
+}
+
+function formatAxisValue(value: number, span: number): string {
+  if (Math.abs(value) >= 1000 || span >= 100) return Math.round(value).toString();
+  if (span >= 10) return Number(value.toFixed(1)).toString();
+  if (span >= 1) return Number(value.toFixed(2)).toString();
+  return Number(value.toFixed(3)).toString();
+}
+
 function CurvePreview({
   curve,
   tuneMap,
@@ -152,42 +217,137 @@ function CurvePreview({
     x: xValues[index],
     y: yValues[index],
   }));
-  const minX = Math.min(...points.map((point) => point.x));
-  const maxX = Math.max(...points.map((point) => point.x));
-  const minY = Math.min(...points.map((point) => point.y));
-  const maxY = Math.max(...points.map((point) => point.y));
-  const spanX = maxX - minX || 1;
-  const spanY = maxY - minY || 1;
+
+  const xScale = buildAxisScale(curve.xAxis, xValues);
+  const yScale = buildAxisScale(curve.yAxis, yValues);
+  const xSpan = xScale.max - xScale.min;
+  const ySpan = yScale.max - yScale.min;
+
+  const width = 640;
+  const height = 300;
+  const marginLeft = 58;
+  const marginRight = 18;
+  const marginTop = 20;
+  const marginBottom = 46;
+  const plotWidth = width - marginLeft - marginRight;
+  const plotHeight = height - marginTop - marginBottom;
+  const plotBottom = marginTop + plotHeight;
+  const plotRight = marginLeft + plotWidth;
+
+  const xToPixel = (value: number) =>
+    marginLeft + ((value - xScale.min) / xSpan) * plotWidth;
+  const yToPixel = (value: number) =>
+    plotBottom - ((value - yScale.min) / ySpan) * plotHeight;
+
   const polyline = points
-    .map((point) => {
-      const px = 24 + ((point.x - minX) / spanX) * 552;
-      const py = 196 - ((point.y - minY) / spanY) * 164;
-      return `${px.toFixed(1)},${py.toFixed(1)}`;
-    })
+    .map((point) => `${xToPixel(point.x).toFixed(1)},${yToPixel(point.y).toFixed(1)}`)
     .join(' ');
 
   const xUnits = definitionMap.get(xName)?.units || x.units || '';
   const yUnits = definitionMap.get(yName)?.units || y.units || '';
+  const xLabel = curve.labels[0] || xName;
+  const yLabel = curve.labels[1] || yName;
+  const displayTitle = curve.title || `${yLabel} vs ${xLabel}`;
 
   return (
     <section className="browser-block">
       <div className="browser-block-heading">
         <div>
           <span className="browser-kind">Curve</span>
-          <h3>{curve.title}</h3>
+          <h3>{displayTitle}</h3>
         </div>
-        <span className="browser-muted">{count} points</span>
+        <div className="curve-meta">
+          <span className="browser-muted">{count} points</span>
+          <span className="browser-muted">
+            {xScale.source === 'ini' && yScale.source === 'ini' ? 'INI axis ranges' : 'auto-scaled'}
+          </span>
+        </div>
       </div>
 
-      <svg className="curve-chart" viewBox="0 0 600 220" role="img" aria-label={curve.title}>
-        <line x1="24" y1="196" x2="576" y2="196" />
-        <line x1="24" y1="32" x2="24" y2="196" />
-        <polyline points={polyline} fill="none" vectorEffect="non-scaling-stroke" />
+      <svg className="curve-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={displayTitle}>
+        {yScale.ticks.map((tick, index) => {
+          const yPosition = yToPixel(tick);
+          return (
+            <g key={`y-tick-${index}`}>
+              <line
+                className="curve-grid"
+                x1={marginLeft}
+                y1={yPosition}
+                x2={plotRight}
+                y2={yPosition}
+              />
+              <text
+                className="curve-tick"
+                x={marginLeft - 8}
+                y={yPosition}
+                textAnchor="end"
+                dominantBaseline="middle"
+              >
+                {formatAxisValue(tick, ySpan)}
+              </text>
+            </g>
+          );
+        })}
+
+        {xScale.ticks.map((tick, index) => {
+          const xPosition = xToPixel(tick);
+          return (
+            <g key={`x-tick-${index}`}>
+              <line
+                className="curve-grid"
+                x1={xPosition}
+                y1={marginTop}
+                x2={xPosition}
+                y2={plotBottom}
+              />
+              <text
+                className="curve-tick"
+                x={xPosition}
+                y={plotBottom + 18}
+                textAnchor="middle"
+              >
+                {formatAxisValue(tick, xSpan)}
+              </text>
+            </g>
+          );
+        })}
+
+        <line
+          className="curve-axis-line"
+          x1={marginLeft}
+          y1={plotBottom}
+          x2={plotRight}
+          y2={plotBottom}
+        />
+        <line
+          className="curve-axis-line"
+          x1={marginLeft}
+          y1={marginTop}
+          x2={marginLeft}
+          y2={plotBottom}
+        />
+
+        <polyline
+          className="curve-line"
+          points={polyline}
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+        />
+
+        {points.map((point, index) => (
+          <circle
+            className="curve-point"
+            key={`point-${index}`}
+            cx={xToPixel(point.x)}
+            cy={yToPixel(point.y)}
+            r="3.5"
+          />
+        ))}
       </svg>
 
       <div className="curve-axis">
-        <span>{curve.labels[0] || xName}{xUnits ? ` · ${xUnits}` : ''}</span>
-        <span>{curve.labels[1] || yName}{yUnits ? ` · ${yUnits}` : ''}</span>
+        <span>{xLabel}{xUnits ? ` · ${xUnits}` : ''}</span>
+        <span>{yLabel}{yUnits ? ` · ${yUnits}` : ''}</span>
       </div>
 
       <div className="curve-values">
