@@ -3335,3 +3335,22 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+.author-tune-meta .metadata-link {
+  padding: 4px 7px;
+  border: 1px solid #303d43;
+  border-radius: 999px;
+  color: #9bb2bc;
+  background: #101618;
+  font-size: .69rem;
+  text-decoration: none;
+}
+
+.author-tune-meta .metadata-link:hover,
+.author-tune-meta .metadata-link:focus-visible {
+  border-color: #6b838e;
+  color: #e1ebef;
+  background: #162126;
+  text-decoration: none;
+}
