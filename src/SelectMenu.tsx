@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 
 export type SelectOption = {
   value: string;
@@ -83,7 +84,7 @@ export default function SelectMenu({
     setActiveIndex(index);
   }
 
-  function handleButtonKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+  function handleButtonKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       if (!open) {
@@ -117,9 +118,9 @@ export default function SelectMenu({
     <div
       className={`select-menu ${className}`}
       ref={rootRef}
-      id={id}
     >
       <button
+        id={id}
         type="button"
         className="select-menu-button"
         aria-haspopup="listbox"
