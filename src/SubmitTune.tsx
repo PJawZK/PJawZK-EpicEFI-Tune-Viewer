@@ -1,6 +1,10 @@
 import JSZip from 'jszip';
 import { useEffect, useMemo, useState } from 'react';
-import { findRegisteredDefinition, type DefinitionRegistryEntry } from './definitionRegistry';
+import {
+  findRegisteredDefinition,
+  loadDefinitionRegistry,
+  type DefinitionRegistryEntry,
+} from './definitionRegistry';
 import { parseIni } from './ini';
 import {
   tuneClassifications,
@@ -280,6 +284,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
   const [registryEntry, setRegistryEntry] = useState<DefinitionRegistryEntry | null>(null);
   const [registryStatus, setRegistryStatus] = useState<'idle' | 'checking' | 'found' | 'missing'>('idle');
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [registryTargets, setRegistryTargets] = useState<string[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [packaging, setPackaging] = useState(false);
   const [packageError, setPackageError] = useState('');
@@ -304,6 +309,21 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         setCatalogError(
           caught instanceof Error ? caught.message : 'Unable to check existing tune IDs.',
         );
+      });
+
+    loadDefinitionRegistry()
+      .then((registry) => {
+        if (!active) return;
+        setRegistryTargets([
+          ...new Set(
+            registry.definitions
+              .map((entry) => entry.ecuTarget?.trim())
+              .filter((value): value is string => Boolean(value)),
+          ),
+        ]);
+      })
+      .catch(() => {
+        // The built-in supported target list remains available if the registry is unreachable.
       });
 
     return () => {
@@ -333,8 +353,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
   }, []);
 
   const ecuTargetOptions = useMemo(
-    () => mergeEcuTargets(form.ecuTarget, inferEcuTarget(tune?.details.signature ?? '')),
-    [form.ecuTarget, tune],
+    () => mergeEcuTargets(
+      form.ecuTarget,
+      inferEcuTarget(tune?.details.signature ?? ''),
+      ...registryTargets,
+    ),
+    [form.ecuTarget, registryTargets, tune],
   );
 
   const selectableFuelOptions = useMemo(() => {
@@ -857,7 +881,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
               ariaLabel="ECU target"
               options={ecuTargetOptions}
             />
-            <small>Supported EpicEFI targets are listed; the exact target detected from the loaded MSQ is added automatically if needed.</small>
+            <small>Supported EpicEFI targets are listed, registered definition targets are merged in automatically, and the exact target detected from the loaded MSQ is added if needed.</small>
           </div>
 
           <div className="submit-field">
