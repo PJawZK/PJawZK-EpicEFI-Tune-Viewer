@@ -100,7 +100,13 @@ function TuneCard({
         </div>
         <div>
           <span>Author</span>
-          <strong>{tune.author}</strong>
+          <button
+            type="button"
+            className="author-link button-reset"
+            onClick={() => navigate(`/author/${encodeURIComponent(tune.author)}`)}
+          >
+            {tune.author}
+          </button>
         </div>
         <div>
           <span>Published</span>
