@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { evaluateCondition } from './condition';
 import { resolveIniText } from './iniExpression';
 import type {
@@ -308,11 +309,11 @@ export default function TuneBrowser({
     setSelectedTitle(title);
   };
 
-  const renderTarget = (
+  function renderTarget(
     target: string,
     visited = new Set<string>(),
     depth = 0,
-  ): React.ReactNode => {
+  ): ReactNode {
     if (!target || depth > 12) return null;
     if (visited.has(target)) {
       return <p className="browser-note">Recursive panel reference stopped at <code>{target}</code>.</p>;
@@ -356,13 +357,13 @@ export default function TuneBrowser({
         <p>This target type is not rendered yet.</p>
       </div>
     );
-  };
+  }
 
-  const renderDialog = (
+  function renderDialog(
     dialog: IniDialogDefinition,
     visited: Set<string>,
     depth: number,
-  ): React.ReactNode => {
+  ): ReactNode {
     const fields = dialog.fields.filter((field) => conditionState(field.condition) !== false);
     const panels = dialog.panels.filter((panel) => conditionState(panel.condition) !== false);
 
@@ -399,9 +400,9 @@ export default function TuneBrowser({
         ))}
       </section>
     );
-  };
+  }
 
-  const renderMenuItem = (item: IniMenuItem, key: string): React.ReactNode => {
+  const renderMenuItem = (item: IniMenuItem, key: string): ReactNode => {
     if (item.type === 'separator') return <div className="browser-separator" key={key} />;
 
     if (item.type === 'group') {
