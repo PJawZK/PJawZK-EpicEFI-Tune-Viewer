@@ -11,6 +11,10 @@ function numberAttr(element: Element, name: string): number | null {
   return Number.isNaN(value) ? null : value;
 }
 
+function firstByLocalName(xml: Document, name: string): Element | undefined {
+  return xml.getElementsByTagNameNS('*', name).item(0) ?? undefined;
+}
+
 export function parseMsq(raw: string): ParsedTune {
   const xml = new DOMParser().parseFromString(raw, 'text/xml');
   const parserError = xml.querySelector('parsererror');
@@ -18,18 +22,18 @@ export function parseMsq(raw: string): ParsedTune {
     throw new Error('The selected file is not valid XML/MSQ.');
   }
 
-  const versionInfo = xml.querySelector('versionInfo') ?? undefined;
+  const versionInfo = firstByLocalName(xml, 'versionInfo');
   if (!versionInfo) {
     throw new Error('MSQ versionInfo is missing.');
   }
 
-  const bibliography = xml.querySelector('bibliography') ?? undefined;
-  const pages = [...xml.querySelectorAll('page')];
+  const bibliography = firstByLocalName(xml, 'bibliography');
+  const pages = [...xml.getElementsByTagNameNS('*', 'page')];
 
   const constants: TuneConstant[] = [];
   pages.forEach((page, pageIndex) => {
     [...page.children]
-      .filter((element) => element.tagName === 'constant')
+      .filter((element) => element.localName === 'constant')
       .forEach((element) => {
         const name = element.getAttribute('name') ?? '';
         if (!name) return;
