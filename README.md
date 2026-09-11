@@ -159,6 +159,26 @@ The Hub now provides:
 
 Published tune info pages also show related tunes ranked from explicit metadata such as engine, vehicle, ECU target, aspiration, fuel, tags and lineage. The UI exposes the matching reasons and does not treat similarity as a compatibility or safety claim.
 
+## Structured Tune Hub collections
+
+V0.10.1 adds collection-style browsing on top of the existing search/filter experience.
+
+Routes include:
+
+- `#/browse` — collection overview
+- `#/browse/base-maps` — EpicEFI Base Maps
+- `#/browse/vehicles` — vehicle makes
+- `#/browse/vehicle/<make>/<model>` — vehicle collection
+- `#/browse/engines` — engine make/code groups
+- `#/browse/engine/<make>/<code>` — engine collection
+- `#/browse/ecus` — ECU targets
+- `#/browse/ecu/<target>` — ECU target collection
+- `#/browse/authors` — published authors
+
+Collection detail pages retain tune search, validation/classification filters and sorting.
+
+Vehicle, engine and ECU metadata on Tune Hub cards, author tune cards and published tune info pages link directly into the matching collection. Author names continue to use their existing author pages.
+
 ## Deliberately deferred
 
 - ECU write/control
@@ -192,7 +212,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.10 prototype.** Tune Hub now provides richer metadata facets, Base Map / Community scope, catalog summaries, distinct Base Map presentation and transparent related-tune discovery with visible matching reasons. V0.9 lineage/history/author pages and the V0.8 compare/direct-publish workflows remain in place.
+**V0.10.1 prototype.** Tune Hub now supports structured browsing by Base Maps, vehicle make/model, engine make/code, ECU target and author, while retaining search/filter/sort inside collection detail pages. Tune-card and published-tune metadata link directly into those collections. V0.10 facets/related-tune discovery, V0.9 lineage/history/author pages and the V0.8 compare/direct-publish workflows remain in place.
 
 
 ## Multi-firmware definition pipeline
