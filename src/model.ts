@@ -54,6 +54,7 @@ export type ParsedIni = {
   signature: string;
   constants: IniConstantDefinition[];
   tables: IniTableDefinition[];
+  labelSets: Record<string, string[]>;
 };
 
 export const validationStatuses = [
