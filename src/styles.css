@@ -2302,23 +2302,38 @@ footer {
 
 
 .author-link {
+  appearance: none;
+  -webkit-appearance: none;
   width: fit-content;
+  margin: 0;
   padding: 0;
-  color: #c9d8de;
+  border: 0;
+  border-radius: 0;
+  color: #9fc0cf;
+  background: transparent;
+  box-shadow: none;
   font: inherit;
   font-weight: 700;
+  line-height: inherit;
   text-align: left;
   text-decoration: underline;
-  text-decoration-color: #3f5965;
+  text-decoration-color: #486572;
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
   cursor: pointer;
 }
 
-.author-link:hover,
+.author-link:hover {
+  color: #dcebf1;
+  background: transparent;
+  text-decoration-color: #8fb5c5;
+}
+
 .author-link:focus-visible {
   color: #eef6f8;
-  text-decoration-color: #8eb2c2;
-  outline: none;
+  background: transparent;
+  outline: 1px solid #6f94a4;
+  outline-offset: 3px;
 }
 
 .author-hero {
