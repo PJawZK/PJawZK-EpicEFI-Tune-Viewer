@@ -7,6 +7,11 @@ import {
   VALIDATION_STATUSES,
 } from './validation-policy.mjs';
 import { assertValidTuneId } from '../src/publicationPolicy.ts';
+import {
+  assertCanonicalMetadataFiles,
+  assertMetadataMatchesFolderFiles,
+  assertTuneFolderEntries,
+} from './tune-structure-policy.mjs';
 
 const root = process.cwd();
 const tunesRoot = path.join(root, 'public', 'tunes');
@@ -164,14 +169,29 @@ function validateNestedObject(value, allowedKeys, context) {
 }
 
 async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
+  try {
+    assertValidTuneId(entry.name, `Tune folder "${entry.name}"`);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+
   const folder = path.join(tunesRoot, entry.name);
+  const folderEntries = await readdir(folder, { withFileTypes: true });
+  const folderNames = assertTuneFolderEntries(
+    entry.name,
+    folderEntries.map((folderEntry) => ({
+      name: folderEntry.name,
+      isFile: folderEntry.isFile(),
+    })),
+  );
+
   const metadataPath = path.join(folder, 'metadata.json');
   let raw;
 
   try {
     raw = await readFile(metadataPath, 'utf8');
-  } catch {
-    return null;
+  } catch (error) {
+    fail(`${entry.name}/metadata.json: unable to read required file: ${error.message}`);
   }
 
   let tune;
@@ -274,17 +294,10 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
     expectOptionalNumber(tune, key, context);
   }
 
-  if (!tune.files || typeof tune.files !== 'object' || Array.isArray(tune.files)) {
-    fail(`${context}: "files" is required.`);
-  }
+  const canonicalFiles = assertCanonicalMetadataFiles(tune.files, context);
+  assertMetadataMatchesFolderFiles(canonicalFiles, folderNames, context);
 
-  const fileKeys = Object.keys(tune.files);
-  if (!fileKeys.every((key) => key === 'msq' || key === 'ini')) {
-    fail(`${context}: files supports only "msq" and optional "ini".`);
-  }
-
-  validateRelativeFileName(tune.files.msq, '.msq', `${context}: files.msq`);
-  const msqPath = path.join(folder, tune.files.msq);
+  const msqPath = path.join(folder, 'tune.msq');
   await assertFileExists(msqPath, `${context}: files.msq`);
 
   const msqSignature = extractMsqSignature(
@@ -299,9 +312,8 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
     );
   }
 
-  if (tune.files.ini !== undefined) {
-    validateRelativeFileName(tune.files.ini, '.ini', `${context}: files.ini`);
-    const iniPath = path.join(folder, tune.files.ini);
+  if (canonicalFiles.hasIni) {
+    const iniPath = path.join(folder, 'mainController.ini');
     await assertFileExists(iniPath, `${context}: files.ini`);
 
     const iniSignature = extractIniSignature(
@@ -340,8 +352,8 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   return {
     ...tune,
     files: {
-      msq: publicPrefix + tune.files.msq,
-      ...(tune.files.ini ? { ini: publicPrefix + tune.files.ini } : {}),
+      msq: publicPrefix + 'tune.msq',
+      ...(canonicalFiles.hasIni ? { ini: publicPrefix + 'mainController.ini' } : {}),
     },
   };
 }
@@ -356,7 +368,7 @@ const tunes = [];
 for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
   if (!entry.isDirectory()) continue;
   const tune = await loadTuneFolder(entry, definitionRegistry, validationAuthority);
-  if (tune) tunes.push(tune);
+  tunes.push(tune);
 }
 
 const ids = new Set();

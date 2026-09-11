@@ -234,9 +234,11 @@ function permissionError(error: unknown): Error | null {
     && /Resource not accessible by personal access token/i.test(error.message)
   ) {
     return new Error(
-      'This GitHub token can read the repository but cannot write repository contents. '
-      + 'Edit or recreate the fine-grained token with Repository access set to '
-      + 'PJawZK-EpicEFI-Tune-Viewer and Repository permissions → Contents → Read and write.',
+      'This GitHub token can authenticate but cannot write repository contents. '
+      + 'Repository owner PJawZK can use a fine-grained token limited to '
+      + 'PJawZK-EpicEFI-Tune-Viewer with Contents → Read and write. '
+      + 'Repository collaborators must use a GitHub token that GitHub permits to write '
+      + 'this personal-account repository; a classic personal access token may be required.',
     );
   }
 
@@ -296,7 +298,7 @@ export async function updateTuneOnGitHub({
     throw new Error(
       `GitHub user @${user.login} does not have write permission to `
       + `${BASE_OWNER}/${BASE_REPO}. Editing published tunes is available only to `
-      + 'trusted repository writers.',
+      + 'the repository owner or a trusted writer with GitHub write access.',
     );
   }
 
@@ -448,7 +450,7 @@ export async function submitTuneToGitHub({
     throw new Error(
       `GitHub user @${user.login} does not have write permission to `
       + `${BASE_OWNER}/${BASE_REPO}. Direct upload to main is available only to `
-      + 'trusted repository writers.',
+      + 'the repository owner or a trusted writer with GitHub write access.',
     );
   }
 
