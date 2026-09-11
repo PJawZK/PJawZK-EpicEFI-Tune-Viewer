@@ -228,29 +228,29 @@ export default function TuneHub({ navigate }: TuneHubProps) {
         </div>
 
         <div className="hub-filter-row">
-          <label>
-            <span>Validation</span>
-            <select value={validation} onChange={(event) => setValidation(event.target.value)}>
+          <div className="hub-filter-control">
+            <label htmlFor="hub-validation">Validation</label>
+            <select id="hub-validation" value={validation} onChange={(event) => setValidation(event.target.value)}>
               <option>All</option>
               {validationOptions.map((option) => <option key={option}>{option}</option>)}
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>Classification</span>
-            <select value={classification} onChange={(event) => setClassification(event.target.value)}>
+          <div className="hub-filter-control">
+            <label htmlFor="hub-classification">Classification</label>
+            <select id="hub-classification" value={classification} onChange={(event) => setClassification(event.target.value)}>
               <option>All</option>
               {classificationOptions.map((option) => <option key={option}>{option}</option>)}
             </select>
-          </label>
+          </div>
 
-          <label>
-            <span>Aspiration</span>
-            <select value={aspiration} onChange={(event) => setAspiration(event.target.value)}>
+          <div className="hub-filter-control">
+            <label htmlFor="hub-aspiration">Aspiration</label>
+            <select id="hub-aspiration" value={aspiration} onChange={(event) => setAspiration(event.target.value)}>
               <option>All</option>
               {aspirationOptions.map((option) => <option key={option}>{option}</option>)}
             </select>
-          </label>
+          </div>
 
           <div className="hub-count">
             <span>Results</span>

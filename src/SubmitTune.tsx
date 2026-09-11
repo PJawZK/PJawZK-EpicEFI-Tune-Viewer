@@ -850,9 +850,10 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             placeholder="MEGA144H7"
           />
 
-          <label className="submit-field">
-            <span>Validation badge <em>required</em></span>
+          <div className="submit-field">
+            <label htmlFor="submit-validation">Validation badge <em>required</em></label>
             <select
+              id="submit-validation"
               value={form.validationStatus}
               onChange={(event) => update('validationStatus', event.target.value as FormState['validationStatus'])}
             >
@@ -862,11 +863,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
                 .map((status) => <option key={status}>{status}</option>)}
             </select>
             <small>EpicEFI Verified cannot be self-assigned.</small>
-          </label>
+          </div>
 
-          <label className="submit-field">
-            <span>Classification <em>required</em></span>
+          <div className="submit-field">
+            <label htmlFor="submit-classification">Classification <em>required</em></label>
             <select
+              id="submit-classification"
               value={form.classification}
               onChange={(event) => update('classification', event.target.value as FormState['classification'])}
             >
@@ -875,7 +877,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
                 <option key={classification}>{classification}</option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
 
         <label className="submit-field full">
@@ -900,9 +902,10 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         <div className="submit-grid four">
           <TextField label="Vehicle make" value={form.vehicleMake} onChange={(value) => update('vehicleMake', value)} />
           <TextField label="Vehicle model" value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
-          <label className="submit-field">
-            <span>Model year</span>
+          <div className="submit-field">
+            <label htmlFor="submit-model-year">Model year</label>
             <select
+              id="submit-model-year"
               value={form.vehicleYear}
               onChange={(event) => update('vehicleYear', event.target.value)}
             >
@@ -911,7 +914,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
                 <option key={year} value={year}>{year}</option>
               ))}
             </select>
-          </label>
+          </div>
           <TextField label="Trim / variant" value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
 
           <TextField label="Engine make" value={form.engineMake} onChange={(value) => update('engineMake', value)} />
@@ -919,9 +922,10 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <TextField label="Displacement (L)" type="number" step="0.01" value={form.displacementLiters} onChange={(value) => update('displacementLiters', value)} />
           <TextField label="Cylinders" type="number" value={form.cylinders} onChange={(value) => update('cylinders', value)} />
 
-          <label className="submit-field">
-            <span>Aspiration</span>
+          <div className="submit-field">
+            <label htmlFor="submit-aspiration">Aspiration</label>
             <select
+              id="submit-aspiration"
               value={form.aspiration}
               onChange={(event) => update('aspiration', event.target.value)}
             >
@@ -933,11 +937,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             {form.aspiration === 'Forced induction (unspecified)' && (
               <small>EpicEFI reports forced induction but does not distinguish turbo from supercharger here.</small>
             )}
-          </label>
+          </div>
           <TextField label="Compression ratio" type="number" step="0.01" value={form.compressionRatio} onChange={(value) => update('compressionRatio', value)} />
-          <label className="submit-field">
-            <span>Fuel</span>
+          <div className="submit-field">
+            <label htmlFor="submit-fuel">Fuel</label>
             <select
+              id="submit-fuel"
               value={form.fuel}
               onChange={(event) => update('fuel', event.target.value)}
             >
@@ -949,11 +954,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             {form.fuel.startsWith('Flex fuel (fallback ') && (
               <small>Auto-detected from the tune's flex-fuel state and configured fallback ethanol content.</small>
             )}
-          </label>
+          </div>
 
-          <label className="submit-field">
-            <span>Ignition</span>
+          <div className="submit-field">
+            <label htmlFor="submit-ignition">Ignition</label>
             <select
+              id="submit-ignition"
               value={form.ignition}
               onChange={(event) => update('ignition', event.target.value)}
             >
@@ -967,7 +973,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
                 ? 'Options are taken from this firmware definition.'
                 : 'Fallback EpicEFI ignition modes are shown until the matching INI is loaded.'}
             </small>
-          </label>
+          </div>
         </div>
       </section>
 
@@ -1085,9 +1091,10 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
               placeholder="github_pat_… or ghp_…"
             />
             <small>
-              The token is not written to localStorage, the ZIP, tune metadata, commits, or logs.
-              It is sent from this page only to GitHub's API. Direct upload requires write permission
-              to this Tune Viewer repository. Users without write permission can use the ZIP fallback.
+              Use a fine-grained personal access token with resource owner <strong>PJawZK</strong>,
+              repository access limited to <strong>PJawZK-EpicEFI-Tune-Viewer</strong>, and
+              <strong>Contents: Read and write</strong>. Metadata read access is supplied by GitHub.
+              The token is held only in page memory and is not stored in the tune, ZIP, commit, or browser storage.
             </small>
           </label>
 
@@ -1133,11 +1140,11 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             </button>
             <a
               className="open-button secondary"
-              href="https://github.com/settings/tokens"
+              href="https://github.com/settings/personal-access-tokens/new"
               target="_blank"
               rel="noreferrer"
             >
-              GitHub token settings
+              Create fine-grained token
             </a>
           </div>
         </div>

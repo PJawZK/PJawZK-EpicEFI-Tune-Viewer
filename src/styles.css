@@ -804,7 +804,7 @@ footer {
   margin-top: 12px;
 }
 
-.hub-filter-row label,
+.hub-filter-control,
 .hub-count {
   padding: 10px 12px;
   border: 1px solid #2d383d;
@@ -812,7 +812,7 @@ footer {
   background: #13191c;
 }
 
-.hub-filter-row label > span,
+.hub-filter-control > label,
 .hub-count > span {
   display: block;
   margin-bottom: 5px;
@@ -1188,7 +1188,8 @@ footer {
   min-width: 0;
 }
 
-.submit-field > span {
+.submit-field > span,
+.submit-field > label {
   color: #859aa4;
   font-size: .72rem;
   font-weight: 800;
@@ -1196,7 +1197,8 @@ footer {
   text-transform: uppercase;
 }
 
-.submit-field > span em {
+.submit-field > span em,
+.submit-field > label em {
   color: #b8cbd3;
   font-style: normal;
   font-weight: 600;
