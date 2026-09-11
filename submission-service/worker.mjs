@@ -92,18 +92,67 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary);
 }
 
+function derLength(length) {
+  if (length < 0x80) return Uint8Array.of(length);
+
+  const bytes = [];
+  let value = length;
+  while (value > 0) {
+    bytes.unshift(value & 0xff);
+    value >>>= 8;
+  }
+  return Uint8Array.of(0x80 | bytes.length, ...bytes);
+}
+
+function concatBytes(...arrays) {
+  const length = arrays.reduce((sum, array) => sum + array.length, 0);
+  const output = new Uint8Array(length);
+  let offset = 0;
+  for (const array of arrays) {
+    output.set(array, offset);
+    offset += array.length;
+  }
+  return output;
+}
+
+function wrapPkcs1AsPkcs8(pkcs1) {
+  const version = Uint8Array.of(0x02, 0x01, 0x00);
+  const rsaAlgorithmIdentifier = Uint8Array.of(
+    0x30, 0x0d,
+    0x06, 0x09,
+    0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01,
+    0x05, 0x00,
+  );
+  const privateKey = concatBytes(
+    Uint8Array.of(0x04),
+    derLength(pkcs1.length),
+    pkcs1,
+  );
+  const body = concatBytes(version, rsaAlgorithmIdentifier, privateKey);
+  return concatBytes(Uint8Array.of(0x30), derLength(body.length), body);
+}
+
 function pemToPkcs8(pem) {
   const normalized = pem.replace(/\\n/g, '\n').trim();
+  const isPkcs1 = normalized.includes('-----BEGIN RSA PRIVATE KEY-----');
+  const isPkcs8 = normalized.includes('-----BEGIN PRIVATE KEY-----');
+
+  if (!isPkcs1 && !isPkcs8) {
+    throw new Error('GitHub App private key must be a PEM RSA private key.');
+  }
+
   const body = normalized
+    .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
+    .replace(/-----END RSA PRIVATE KEY-----/g, '')
     .replace(/-----BEGIN PRIVATE KEY-----/g, '')
     .replace(/-----END PRIVATE KEY-----/g, '')
     .replace(/\s+/g, '');
 
-  if (!body) throw new Error('GitHub App private key is empty or not PKCS#8 PEM.');
+  if (!body) throw new Error('GitHub App private key is empty.');
 
   const binary = atob(body);
   const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
-  return bytes.buffer;
+  return (isPkcs1 ? wrapPkcs1AsPkcs8(bytes) : bytes).buffer;
 }
 
 async function createAppJwt(env) {
