@@ -1086,10 +1086,18 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
               placeholder="Select validation…"
               ariaLabel="Validation badge"
               options={validationStatuses
-                .filter((status) => status !== 'EpicEFI Verified')
+                .filter(
+                  (status) =>
+                    status !== 'EpicEFI Verified'
+                    || form.validationStatus === 'EpicEFI Verified',
+                )
                 .map((status) => ({ value: status }))}
             />
-            <small>EpicEFI Verified cannot be self-assigned.</small>
+            <small>
+              {form.validationStatus === 'EpicEFI Verified' && editId
+                ? 'Existing EpicEFI Verified status is preserved unless you deliberately change it.'
+                : 'EpicEFI Verified cannot be self-assigned.'}
+            </small>
           </div>
 
           <div className="submit-field">
