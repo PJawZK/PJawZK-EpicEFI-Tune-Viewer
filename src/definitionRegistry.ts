@@ -23,7 +23,7 @@ export type DefinitionRegistryEntry = {
   source: string;
 };
 
-type DefinitionRegistry = {
+export type DefinitionRegistry = {
   schema: number;
   definitions: DefinitionRegistryEntry[];
 };
@@ -73,7 +73,7 @@ function bytesToHex(bytes: ArrayBuffer): string {
     .join('');
 }
 
-async function fetchRegistry(): Promise<DefinitionRegistry> {
+export async function loadDefinitionRegistry(): Promise<DefinitionRegistry> {
   if (!registryPromise) {
     registryPromise = fetch(assetUrl('definitions/registry.json')).then(async (response) => {
       if (!response.ok) {
@@ -89,7 +89,7 @@ async function fetchRegistry(): Promise<DefinitionRegistry> {
 export async function findRegisteredDefinition(
   signature: string,
 ): Promise<DefinitionRegistryEntry | null> {
-  const registry = await fetchRegistry();
+  const registry = await loadDefinitionRegistry();
   return registry.definitions.find((entry) => entry.signature === signature) ?? null;
 }
 
