@@ -96,8 +96,8 @@ function inferEcuTarget(signature: string): string {
   if (mega) return mega[1].toUpperCase();
 
   const parts = signature.split('.').map((part) => part.trim()).filter(Boolean);
-  if (parts.length >= 2 && /^\d+$/.test(parts.at(-1) ?? '')) {
-    return parts.at(-2) ?? '';
+  if (parts.length >= 2 && /^\d+$/.test(parts[parts.length - 1] ?? '')) {
+    return parts[parts.length - 2] ?? '';
   }
 
   return '';
