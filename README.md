@@ -67,13 +67,33 @@ This allows combinations such as **Road Tested + Experimental** without confusin
 
 `EpicEFI Verified` is reserved for an EpicEFI-controlled approval process if one is established.
 
+## Submit Tune
+
+The GitHub prototype now includes a browser-local submission builder at `#/submit`.
+
+The builder:
+
+- parses the selected MSQ locally
+- uses the MSQ firmware signature as authoritative
+- checks for an exact registered definition
+- requires a matching local `mainController.ini` when the signature is not registered
+- blocks mismatched definitions
+- collects vehicle, engine and calibration metadata
+- requires explicit validation and classification selection
+- does not allow a user to self-assign `EpicEFI Verified`
+- checks the proposed tune ID against the current public catalog
+- creates a repository-ready ZIP locally in the browser
+
+The generated package is not uploaded automatically. During the GitHub prototype phase it is added under `public/tunes/<tune-id>/` through a pull request, where GitHub Actions validates the metadata and file references before the tune can appear in the Hub.
+
 ## Deliberately deferred
 
 - ECU write/control
 - log viewing
 - user accounts/authentication
 - stars/favorites
-- server-side tune uploads
+- direct server-side tune uploads
+- automatic GitHub PR creation
 - automatic tune-quality claims
 
 ## Architecture
@@ -85,7 +105,7 @@ The prototype is static-first:
 - INI-driven tune UI
 - GitHub Actions validation
 - GitHub Pages deployment
-- repository-backed tune metadata planned next
+- repository-backed tune metadata and browser-local submission packaging
 
 The frontend data model is kept independent from storage so a future EpicEFI-hosted API/database can replace the repository-backed prototype without rewriting the tune viewer.
 
@@ -98,4 +118,4 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.4 prototype.** The repository now includes a GitHub-backed Tune Hub, permanent published-tune routes, search/filtering, Info/Tune/Download/Share views, and automatic catalog validation/index generation. The public catalog intentionally starts empty.
+**V0.5 prototype.** The repository now includes the Tune Hub, local viewer, permanent published-tune routes, automatic catalog validation/index generation, and a browser-local submission builder that produces repository-ready tune packages without uploading local files automatically.

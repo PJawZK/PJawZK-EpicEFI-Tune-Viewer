@@ -1104,3 +1104,254 @@ footer {
     align-items: stretch;
   }
 }
+
+
+.hub-hero-actions,
+.hub-empty-actions,
+.submission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.submit-hero {
+  align-items: center;
+}
+
+.submit-file-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.submit-file-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 92px;
+  padding: 15px;
+  border: 1px dashed #40515a;
+  border-radius: 8px;
+  background: #12181b;
+  cursor: pointer;
+}
+
+.submit-file-card:hover {
+  border-color: #748d98;
+  background: #161e22;
+}
+
+.submit-file-card > span {
+  color: #728892;
+  font-size: .69rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.submit-file-card > strong {
+  overflow-wrap: anywhere;
+  color: #e3edf1;
+  font-size: .94rem;
+}
+
+.submit-file-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.submit-signature-grid {
+  margin-top: 14px;
+}
+
+.submit-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.submit-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.submit-grid.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.submit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.submit-field > span {
+  color: #859aa4;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.submit-field > span em {
+  color: #b8cbd3;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.submit-field input,
+.submit-field select,
+.submit-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #344149;
+  border-radius: 6px;
+  color: #e3edf1;
+  background: #111719;
+  font: inherit;
+  outline: none;
+}
+
+.submit-field input:focus,
+.submit-field select:focus,
+.submit-field textarea:focus {
+  border-color: #718994;
+}
+
+.submit-field textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.submit-field small {
+  color: #6f838c;
+  font-size: .72rem;
+}
+
+.submit-field.full {
+  margin-top: 12px;
+}
+
+.submit-errors {
+  margin: 0 0 14px;
+  padding: 12px 14px 12px 32px;
+  border: 1px solid #59433d;
+  border-radius: 7px;
+  color: #d5b0a4;
+  background: #1c1715;
+}
+
+.submit-errors li + li {
+  margin-top: 5px;
+}
+
+.submission-preview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.submission-preview > div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #2b373c;
+  border-radius: 7px;
+  background: #111719;
+}
+
+.submission-preview > div > span {
+  display: block;
+  color: #71868f;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.submission-preview > div > strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: #e3edf1;
+  font-size: .8rem;
+}
+
+.submission-preview-wide {
+  grid-column: 1 / -1;
+}
+
+.metadata-preview {
+  margin-top: 12px;
+  border: 1px solid #2d383d;
+  border-radius: 7px;
+  background: #101517;
+}
+
+.metadata-preview summary {
+  padding: 11px 13px;
+  color: #9bb0b8;
+  cursor: pointer;
+}
+
+.metadata-preview pre {
+  max-height: 380px;
+  margin: 0;
+  padding: 13px;
+  overflow: auto;
+  border-top: 1px solid #273136;
+  color: #afc0c7;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.submission-actions {
+  margin-top: 14px;
+}
+
+.open-button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+@media (max-width: 980px) {
+  .submit-grid.four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .submission-preview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .submit-file-grid,
+  .submit-grid.two,
+  .submit-grid.four,
+  .submission-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .submission-preview-wide {
+    grid-column: auto;
+  }
+
+  .hub-hero-actions,
+  .hub-empty-actions,
+  .submission-actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .hub-hero-actions > *,
+  .hub-empty-actions > *,
+  .submission-actions > * {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+}
