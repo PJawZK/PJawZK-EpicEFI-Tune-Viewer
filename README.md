@@ -118,7 +118,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.7 prototype.** The site now exposes the multi-firmware system directly: `#/definitions` browses exact registered firmware definitions and `#/definitions/submit` prepares repository-ready definition source packages locally from any EpicEFI `mainController.ini`. Unknown/development firmware still works through an exact local INI.
+**V0.8 prototype.** The site now also includes `#/compare`, a local-first definition-aware Tune Compare tool. Exact same-firmware tunes receive scalar, table and curve comparison; different firmware is intentionally limited to a clearly marked shared-name scalar intersection.
 
 
 ## Multi-firmware definition pipeline
@@ -138,3 +138,30 @@ The GitHub Pages prototype includes:
 - `#/definitions/submit` — parse an EpicEFI `mainController.ini` locally, detect its exact signature and ECU target, reject duplicate registered signatures, and create a source ZIP for `definitions/sources/<definition-id>/`.
 
 Nothing is uploaded automatically. The V0.6 CI pipeline remains authoritative for turning source INIs into compact public registry packs.
+
+
+## Tune Compare
+
+The local comparison tool is available at:
+
+```text
+#/compare
+```
+
+Each side resolves its exact firmware definition independently through the public registry or a matching local `mainController.ini`.
+
+When both tunes use the same exact firmware signature, Tune Compare provides:
+
+- changed/unchanged scalar setting counts
+- INI-derived menu/category grouping
+- setting search and changed-only filtering
+- Tune A / Tune B values and numeric deltas
+- table Tune A / Tune B / absolute delta / percentage delta views
+- changed-cell counts and axis-change warnings
+- overlaid curves using INI-defined axes
+- per-point curve deltas
+- JSON comparison report export
+
+When firmware signatures differ, only the shared-name scalar intersection is shown. Tables and curves are intentionally disabled because Tune Viewer does not assume cross-version semantic equivalence from matching names alone.
+
+Tune Compare is read-only and does not write to an ECU or upload local tune files.
