@@ -1,12 +1,31 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://epicefi.example/schemas/tune-metadata.schema.json",
+  "$id": "https://pjawzk.github.io/PJawZK-EpicEFI-Tune-Viewer/schemas/tune-metadata.schema.json",
   "title": "EpicEFI Tune Viewer published tune metadata",
   "type": "object",
   "additionalProperties": false,
-  "required": ["title", "validationStatus", "classification", "ecuTarget", "firmwareSignature"],
+  "required": [
+    "id",
+    "title",
+    "author",
+    "publishedAt",
+    "ecuTarget",
+    "firmwareSignature",
+    "validationStatus",
+    "classification",
+    "tags",
+    "files"
+  ],
   "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
     "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "author": { "type": "string", "minLength": 1 },
+    "publishedAt": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "minLength": 1 },
     "ecuTarget": { "type": "string", "minLength": 1 },
     "firmwareSignature": { "type": "string", "minLength": 1 },
     "validationStatus": {
@@ -26,12 +45,55 @@
     },
     "vehicle": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "properties": {
+        "make": { "type": "string" },
+        "model": { "type": "string" },
+        "year": { "type": "number" },
+        "trim": { "type": "string" }
+      }
     },
     "engine": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "properties": {
+        "make": { "type": "string" },
+        "code": { "type": "string" },
+        "displacementLiters": { "type": "number" },
+        "cylinders": { "type": "number" },
+        "aspiration": { "type": "string" },
+        "compressionRatio": { "type": "number" }
+      }
     },
-    "notes": { "type": "string" }
+    "fuel": { "type": "string" },
+    "ignition": { "type": "string" },
+    "injectorCc": { "type": "number" },
+    "powerHp": { "type": "number" },
+    "stockPowerHp": { "type": "number" },
+    "torqueNm": { "type": "number" },
+    "boostBar": { "type": "number" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "notes": { "type": "string" },
+    "versionLabel": { "type": "string" },
+    "parentTuneId": { "type": "string" },
+    "files": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["msq"],
+      "properties": {
+        "msq": {
+          "type": "string",
+          "pattern": "^[^/\\\\]+\\.msq$"
+        },
+        "ini": {
+          "type": "string",
+          "pattern": "^[^/\\\\]+\\.ini$"
+        }
+      }
+    }
   }
 }
