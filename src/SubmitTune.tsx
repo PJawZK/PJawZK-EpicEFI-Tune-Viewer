@@ -126,6 +126,7 @@ function githubProgressLabel(
     'checking-main': 'Checking main and tune ID',
     'uploading-files': 'Uploading tune files',
     'publishing-main': 'Publishing tune metadata to main',
+    'rolling-back': 'Restoring previous tune files',
   };
 
   return progress ? `${labels[progress]}${detail ? ` · ${detail}` : ''}` : '';
@@ -389,6 +390,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
   const [editLoading, setEditLoading] = useState(Boolean(sourceTuneId));
   const [editLoadError, setEditLoadError] = useState('');
   const [originalPublishedAt, setOriginalPublishedAt] = useState('');
+  const [originalMetadataText, setOriginalMetadataText] = useState('');
   const [originalHadIni, setOriginalHadIni] = useState(false);
   const [msqChanged, setMsqChanged] = useState(false);
   const [iniChanged, setIniChanged] = useState(false);
@@ -470,6 +472,28 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         throw new Error(`Published tune "${sourceTuneId}" was not found.`);
       }
 
+      const metadataRaw = await loadPublishedText(
+        `tunes/${encodeURIComponent(sourceTuneId)}/metadata.json`,
+      );
+      let repositoryMetadata: unknown;
+      try {
+        repositoryMetadata = JSON.parse(metadataRaw) as unknown;
+      } catch (error) {
+        throw new Error(
+          `Published metadata is invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+      if (
+        !repositoryMetadata
+        || typeof repositoryMetadata !== 'object'
+        || Array.isArray(repositoryMetadata)
+        || (repositoryMetadata as Record<string, unknown>).id !== sourceTuneId
+      ) {
+        throw new Error(
+          `Published metadata identity does not match tune "${sourceTuneId}". Editing is blocked.`,
+        );
+      }
+
       const msqRaw = await loadPublishedText(published.files.msq);
       const parsedTune = parseMsq(msqRaw);
       if (parsedTune.details.signature !== published.firmwareSignature) {
@@ -520,6 +544,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       }
 
       setIdTouched(true);
+      setOriginalMetadataText(metadataRaw);
       setOriginalHadIni(Boolean(published.files.ini));
       setMsqFile(new File([msqRaw], 'tune.msq', { type: 'application/xml' }));
       setTune(parsedTune);
@@ -966,6 +991,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             tuneId: editId,
             title: finalMetadata.title,
             firmwareSignature: finalMetadata.firmwareSignature,
+            expectedMetadataText: originalMetadataText,
             files: [
               files[0],
               ...(msqChanged ? files.filter((entry) => entry.path.endsWith('/tune.msq')) : []),
@@ -988,6 +1014,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             title: finalMetadata.title,
             firmwareSignature: finalMetadata.firmwareSignature,
             files,
+            expectedParentMetadataText:
+              isRevision ? originalMetadataText : undefined,
             onProgress: (progress, detail = '') => {
               setGitHubProgress(progress);
               setGitHubProgressDetail(detail);

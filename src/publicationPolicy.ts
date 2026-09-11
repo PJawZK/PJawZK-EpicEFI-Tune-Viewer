@@ -162,6 +162,7 @@ export function assertTuneMetadataIdentity(
   firmwareSignature: string,
 ): {
   hasIni: boolean;
+  parentTuneId?: string;
 } {
   assertValidTuneId(tuneId);
   const metadata = record(value);
@@ -195,8 +196,20 @@ export function assertTuneMetadataIdentity(
     fail('metadata.json files.ini must be exactly "mainController.ini" when supplied.');
   }
 
+  const parentTuneId = metadata.parentTuneId;
+  if (parentTuneId !== undefined) {
+    if (typeof parentTuneId !== 'string' || parentTuneId.trim() === '') {
+      fail('metadata.json parentTuneId must be a non-empty string when supplied.');
+    }
+    assertValidTuneId(parentTuneId, 'metadata.json parentTuneId');
+    if (parentTuneId === tuneId) {
+      fail('metadata.json parentTuneId cannot reference the tune itself.');
+    }
+  }
+
   return {
     hasIni: files.ini === 'mainController.ini',
+    ...(typeof parentTuneId === 'string' ? { parentTuneId } : {}),
   };
 }
 
@@ -217,6 +230,48 @@ export function assertMetadataMatchesFinalFiles(
       metadata.hasIni
         ? 'metadata.json references mainController.ini, but the final tune folder would not contain it.'
         : 'The final tune folder would contain mainController.ini, but metadata.json does not reference it.',
+    );
+  }
+}
+
+function canonicalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeJson);
+  }
+
+  if (value && typeof value === 'object') {
+    const source = value as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(source)
+        .sort()
+        .map((key) => [key, canonicalizeJson(source[key])]),
+    );
+  }
+
+  return value;
+}
+
+function parseSnapshotJson(raw: string, label: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch (error) {
+    fail(
+      `${label} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+export function assertMetadataSnapshotMatches(
+  currentRaw: string,
+  expectedRaw: string,
+  tuneId: string,
+): void {
+  const current = canonicalizeJson(parseSnapshotJson(currentRaw, 'Live metadata.json'));
+  const expected = canonicalizeJson(parseSnapshotJson(expectedRaw, 'Loaded metadata.json'));
+
+  if (JSON.stringify(current) !== JSON.stringify(expected)) {
+    fail(
+      `Published tune "${tuneId}" changed after this page was loaded. Reload the tune before saving so a newer edit is not overwritten.`,
     );
   }
 }
