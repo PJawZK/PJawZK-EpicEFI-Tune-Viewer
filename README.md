@@ -53,7 +53,15 @@ Published tune routes use hash navigation so they work reliably on GitHub Pages:
 
 The static prototype catalog is generated from folders under `public/tunes/<id>/`. Each tune supplies `metadata.json`, an MSQ and optionally an exact matching INI. The build validates the catalog before deployment.
 
-The catalog currently starts empty intentionally; local files are never promoted into it automatically.
+The catalog includes curated EpicEFI base-map profiles plus explicitly published user tunes. Local files are never promoted into it automatically.
+
+## EpicEFI base-map profiles
+
+The Tune Hub includes 19 complete root-level MSQ + INI pairs from the official EpicEFI base-map library. They are presented as generic **Base Tune / Unverified** profiles, with searchable author, vehicle, engine and ECU metadata inferred conservatively from the source labels and accompanying descriptions.
+
+Every imported profile is still subject to the same exact firmware-signature gate as any other published tune. If the base-map library's supplied INI does not match its MSQ, the import uses an exact matching definition from the EpicEFI firmware archive rather than weakening the signature check.
+
+Source/import details and intentionally excluded incomplete items are documented in `public/tunes/BASE_MAP_IMPORT_NOTES.md`.
 
 ## Validation model
 
