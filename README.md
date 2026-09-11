@@ -82,18 +82,23 @@ The builder:
 - requires explicit validation and classification selection
 - does not allow a user to self-assign `EpicEFI Verified`
 - checks the proposed tune ID against the current public catalog
-- creates a repository-ready ZIP locally in the browser
+- creates a corrected repository-ready ZIP from the original browser File objects
+- omits duplicate INIs when the exact firmware definition is already registered
+- can submit the validated tune directly to GitHub and open a pull request
 
-The generated package is not uploaded automatically. During the GitHub prototype phase it is added under `public/tunes/<tune-id>/` through a pull request, where GitHub Actions validates the metadata and file references before the tune can appear in the Hub.
+For direct submission, the browser uses a GitHub access token held only in page memory. The token is never stored in browser storage or written into tune metadata, ZIPs, commits or PR text.
+
+Repository collaborators submit through a temporary branch in the main repository. Other users are routed through a fork when their GitHub token has permission to create/sync one. Nothing is written directly to `main`; GitHub Actions and PR review remain the publication gate.
+
+The ZIP option remains available for manual/offline submission.
 
 ## Deliberately deferred
 
 - ECU write/control
 - log viewing
-- user accounts/authentication
+- full account/OAuth authentication service
 - stars/favorites
-- direct server-side tune uploads
-- automatic GitHub PR creation
+- direct server-side tune storage
 - automatic tune-quality claims
 
 ## Architecture
@@ -105,7 +110,9 @@ The prototype is static-first:
 - INI-driven tune UI
 - GitHub Actions validation
 - GitHub Pages deployment
-- repository-backed tune metadata and browser-local submission packaging
+- repository-backed tune metadata
+- browser-local submission packaging
+- explicit browser-to-GitHub branch/PR submission
 
 The frontend data model is kept independent from storage so a future EpicEFI-hosted API/database can replace the repository-backed prototype without rewriting the tune viewer.
 
@@ -118,7 +125,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.8 prototype.** The site now also includes `#/compare`, a local-first definition-aware Tune Compare tool. Exact same-firmware tunes receive scalar, table and curve comparison; different firmware is intentionally limited to a clearly marked shared-name scalar intersection.
+**V0.8.1 prototype.** Submit Tune now packages original file bytes with archive-size sanity checks and can create a GitHub submission branch/pull request directly from the browser. CI independently verifies MSQ/INI/metadata firmware signatures before publication. V0.8 Tune Compare remains available at `#/compare`.
 
 
 ## Multi-firmware definition pipeline
