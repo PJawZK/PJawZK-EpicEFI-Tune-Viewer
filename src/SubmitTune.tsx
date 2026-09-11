@@ -1075,6 +1075,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         msq: msqFile,
         ini: shouldIncludeIni && iniFile ? iniFile : undefined,
         turnstileToken: publicTurnstileToken,
+        parentMetadataSnapshot:
+          isRevision ? originalMetadataText : undefined,
       });
 
       rememberPublishedTune(publicMetadata);
