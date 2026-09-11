@@ -30,6 +30,17 @@ type CompactMenuItem =
   | ['i', string, string?, string?]
   | ['g', string, CompactMenuItem[]];
 
+type LegacyCompactTable = {
+  i: string;
+  m: string;
+  t: string;
+  x: string;
+  y: string;
+  z: string;
+  xl: string;
+  yl: string;
+};
+
 type CompactDefinitionPack = {
   schema: number;
   signature: string;
@@ -40,16 +51,7 @@ type CompactDefinitionPack = {
   types: string[];
   units: string[];
   definitions: unknown[][];
-  tables: unknown[] | Array<{
-    i: string;
-    m: string;
-    t: string;
-    x: string;
-    y: string;
-    z: string;
-    xl: string;
-    yl: string;
-  }>;
+  tables: Array<unknown[] | LegacyCompactTable>;
   menus?: Array<[string, string, CompactMenuItem[]]>;
   dialogs?: unknown[][];
   curves?: unknown[][];
