@@ -40,16 +40,20 @@ INI-defined menus / dialogs / curves / tables
 
 During the GitHub prototype phase, a user can load the exact matching `mainController.ini` locally. A future definition registry may make this automatic for many firmware releases, but that registry is a convenience layer rather than a compatibility gate.
 
-## Tune-library direction
+## Tune Hub
 
-The next prototype stage will add the tune-site workflow:
+The GitHub Pages root is now the public Tune Hub. The existing local-file viewer is available at `#/local`.
 
-- searchable Tune Hub
-- vehicle/engine metadata
-- permanent tune pages
-- Info / Tune / Download / Share views
-- validation badges and tune classification
-- repository-backed public tune submissions during the GitHub prototype phase
+Published tune routes use hash navigation so they work reliably on GitHub Pages:
+
+- `#/t/<id>/info`
+- `#/t/<id>/tune`
+- `#/t/<id>/download`
+- `#/t/<id>/share`
+
+The static prototype catalog is generated from folders under `public/tunes/<id>/`. Each tune supplies `metadata.json`, an MSQ and optionally an exact matching INI. The build validates the catalog before deployment.
+
+The catalog currently starts empty intentionally; local files are never promoted into it automatically.
 
 ## Validation model
 
@@ -94,4 +98,4 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.3 prototype in development.** INI-driven tune navigation is being added before the public Tune Hub/search/share layer.
+**V0.4 prototype.** The repository now includes a GitHub-backed Tune Hub, permanent published-tune routes, search/filtering, Info/Tune/Download/Share views, and automatic catalog validation/index generation. The public catalog intentionally starts empty.
