@@ -351,11 +351,54 @@ async function readLiveMetadata(token, config, tuneId) {
   return metadata;
 }
 
-async function assertLiveLineage(token, config, tuneId, parentTuneId) {
+function canonicalizeJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeJson);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((key) => [key, canonicalizeJson(value[key])]),
+    );
+  }
+  return value;
+}
+
+function assertParentSnapshotMatches(liveMetadata, expectedRaw, parentTuneId) {
+  if (!expectedRaw) return;
+
+  let expected;
+  try {
+    expected = JSON.parse(expectedRaw);
+  } catch {
+    const error = new Error('Loaded parent metadata snapshot is invalid.');
+    error.status = 409;
+    throw error;
+  }
+
+  if (
+    JSON.stringify(canonicalizeJson(liveMetadata))
+    !== JSON.stringify(canonicalizeJson(expected))
+  ) {
+    const error = new Error(
+      `Lineage parent "${parentTuneId}" changed after this page was loaded. Reload before submitting the revision.`,
+    );
+    error.status = 409;
+    throw error;
+  }
+}
+
+async function assertLiveLineage(
+  token,
+  config,
+  tuneId,
+  parentTuneId,
+  expectedParentMetadataRaw,
+) {
   if (!parentTuneId) return;
 
   const seen = new Set([tuneId]);
   let cursor = parentTuneId;
+  let first = true;
 
   while (cursor) {
     assertPublicTuneId(cursor, 'Lineage parent Tune ID');
@@ -367,6 +410,10 @@ async function assertLiveLineage(token, config, tuneId, parentTuneId) {
     seen.add(cursor);
 
     const metadata = await readLiveMetadata(token, config, cursor);
+    if (first && expectedParentMetadataRaw) {
+      assertParentSnapshotMatches(metadata, expectedParentMetadataRaw, cursor);
+    }
+    first = false;
     if (metadata.parentTuneId === undefined) break;
     if (typeof metadata.parentTuneId !== 'string' || !metadata.parentTuneId.trim()) {
       const error = new Error(`Lineage tune "${cursor}" has invalid parentTuneId metadata.`);
@@ -435,6 +482,7 @@ async function submitTune(request, env, origin) {
   const msq = form.get('msq');
   const ini = form.get('ini');
   const turnstileToken = form.get('turnstileToken');
+  const parentMetadataSnapshot = form.get('parentMetadataSnapshot');
 
   if (typeof metadataRaw !== 'string') {
     const error = new Error('metadata field is required.');
@@ -488,7 +536,13 @@ async function submitTune(request, env, origin) {
   });
 
   await assertDestinationUnused(token, config, metadata.id);
-  await assertLiveLineage(token, config, metadata.id, metadata.parentTuneId);
+  await assertLiveLineage(
+    token,
+    config,
+    metadata.id,
+    metadata.parentTuneId,
+    typeof parentMetadataSnapshot === 'string' ? parentMetadataSnapshot : undefined,
+  );
 
   const basePath = `public/tunes/${metadata.id}`;
   const created = [];
