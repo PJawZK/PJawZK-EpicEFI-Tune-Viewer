@@ -3,11 +3,15 @@ import LocalTuneViewer from './LocalTuneViewer';
 import PublishedTunePage from './PublishedTunePage';
 import TuneHub from './TuneHub';
 import SubmitTune from './SubmitTune';
+import DefinitionHub from './DefinitionHub';
+import SubmitDefinition from './SubmitDefinition';
 
 type Route =
   | { kind: 'hub' }
   | { kind: 'local' }
   | { kind: 'submit' }
+  | { kind: 'definitions' }
+  | { kind: 'submitDefinition' }
   | {
       kind: 'published';
       id: string;
@@ -24,6 +28,10 @@ function parseRoute(): Route {
   if (parts.length === 0) return { kind: 'hub' };
   if (parts[0] === 'local') return { kind: 'local' };
   if (parts[0] === 'submit') return { kind: 'submit' };
+  if (parts[0] === 'definitions' && parts[1] === 'submit') {
+    return { kind: 'submitDefinition' };
+  }
+  if (parts[0] === 'definitions') return { kind: 'definitions' };
 
   if (parts[0] === 't' && parts[1]) {
     let id = parts[1];
@@ -103,12 +111,25 @@ export default function App() {
           >
             Submit Tune
           </button>
+          <button
+            type="button"
+            className={
+              route.kind === 'definitions' || route.kind === 'submitDefinition'
+                ? 'active'
+                : ''
+            }
+            onClick={() => navigate('/definitions')}
+          >
+            Firmware Definitions
+          </button>
         </div>
       </nav>
 
       {route.kind === 'hub' && <TuneHub navigate={navigate} />}
       {route.kind === 'local' && <LocalTuneViewer />}
       {route.kind === 'submit' && <SubmitTune navigate={navigate} />}
+      {route.kind === 'definitions' && <DefinitionHub navigate={navigate} />}
+      {route.kind === 'submitDefinition' && <SubmitDefinition navigate={navigate} />}
       {route.kind === 'published' && (
         <PublishedTunePage
           id={route.id}
