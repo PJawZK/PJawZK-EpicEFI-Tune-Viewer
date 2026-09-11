@@ -1,21 +1,17 @@
 import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  assertAuthorityConsistency,
+  assertTuneValidationAuthority,
+  parseValidationAuthority,
+  VALIDATION_STATUSES,
+} from './validation-policy.mjs';
 
 const root = process.cwd();
 const tunesRoot = path.join(root, 'public', 'tunes');
 const indexPath = path.join(tunesRoot, 'index.json');
 const definitionRegistryPath = path.join(root, 'public', 'definitions', 'registry.json');
-
-const validationStatuses = new Set([
-  'Unverified',
-  'Starts/Idles',
-  'Driven',
-  'Road Tested',
-  'Performance Tested',
-  'Track Tested',
-  'Dyno Tested',
-  'EpicEFI Verified',
-]);
+const validationAuthorityPath = path.join(root, 'authority', 'validation-statuses.json');
 
 const classifications = new Set([
   'Normal',
@@ -111,6 +107,24 @@ function extractIniSignature(raw, context) {
   fail(`${context}: INI firmware signature is missing.`);
 }
 
+async function loadValidationAuthority() {
+  let raw;
+  try {
+    raw = await readFile(validationAuthorityPath, 'utf8');
+  } catch {
+    fail('authority/validation-statuses.json is missing.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    fail(`authority/validation-statuses.json: invalid JSON: ${error.message}`);
+  }
+
+  return parseValidationAuthority(parsed);
+}
+
 async function loadDefinitionRegistry() {
   let raw;
   try {
@@ -148,7 +162,7 @@ function validateNestedObject(value, allowedKeys, context) {
   }
 }
 
-async function loadTuneFolder(entry, definitionRegistry) {
+async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   const folder = path.join(tunesRoot, entry.name);
   const metadataPath = path.join(folder, 'metadata.json');
   let raw;
@@ -214,9 +228,10 @@ async function loadTuneFolder(entry, definitionRegistry) {
   if (!/^[a-z0-9][a-z0-9._-]*$/.test(tune.id)) {
     fail(`${context}: id may contain lowercase letters, digits, ".", "_" and "-" only.`);
   }
-  if (!validationStatuses.has(tune.validationStatus)) {
+  if (!VALIDATION_STATUSES.has(tune.validationStatus)) {
     fail(`${context}: unsupported validationStatus "${tune.validationStatus}".`);
   }
+  assertTuneValidationAuthority(tune, validationAuthority, context);
   if (!classifications.has(tune.classification)) {
     fail(`${context}: unsupported classification "${tune.classification}".`);
   }
@@ -331,12 +346,13 @@ async function loadTuneFolder(entry, definitionRegistry) {
 await mkdir(tunesRoot, { recursive: true });
 
 const definitionRegistry = await loadDefinitionRegistry();
+const validationAuthority = await loadValidationAuthority();
 const entries = await readdir(tunesRoot, { withFileTypes: true });
 const tunes = [];
 
 for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
   if (!entry.isDirectory()) continue;
-  const tune = await loadTuneFolder(entry, definitionRegistry);
+  const tune = await loadTuneFolder(entry, definitionRegistry, validationAuthority);
   if (tune) tunes.push(tune);
 }
 
@@ -345,6 +361,8 @@ for (const tune of tunes) {
   if (ids.has(tune.id)) fail(`Duplicate tune id "${tune.id}".`);
   ids.add(tune.id);
 }
+
+assertAuthorityConsistency(tunes, validationAuthority);
 
 for (const tune of tunes) {
   if (tune.parentTuneId && !ids.has(tune.parentTuneId)) {

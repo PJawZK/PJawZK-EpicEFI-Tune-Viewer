@@ -29,6 +29,7 @@
     "ecuTarget": { "type": "string", "minLength": 1 },
     "firmwareSignature": { "type": "string", "minLength": 1 },
     "validationStatus": {
+      "description": "EpicEFI Verified is reserved and also requires a matching repository authority entry.",
       "enum": [
         "Unverified",
         "Starts/Idles",
