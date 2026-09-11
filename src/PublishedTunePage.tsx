@@ -12,6 +12,14 @@ import type {
 import { parseMsq } from './msq';
 import TuneBrowser from './TuneBrowser';
 import {
+  engineSummary,
+  firmwareSummary,
+  formatTuneDate,
+  tuneIdentity,
+  tuneMetrics,
+  validationClass,
+} from './tunePresentation';
+import {
   ecuCollectionPath,
   engineCollectionPath,
   rankRelatedTunes,
@@ -384,6 +392,19 @@ export default function PublishedTunePage({
     ].filter(Boolean).join(' ');
   }, [metadata]);
 
+  const engineLabel = useMemo(
+    () => metadata ? engineSummary(metadata) : '',
+    [metadata],
+  );
+  const quickMetrics = useMemo(
+    () => metadata ? tuneMetrics(metadata) : [],
+    [metadata],
+  );
+  const isBaseMap = metadata?.classification === 'Base Tune';
+  const wasUpdated = Boolean(
+    metadata?.updatedAt && metadata.updatedAt !== metadata.publishedAt,
+  );
+
   const directChildren = useMemo(
     () => descendants
       .filter((entry) => entry.depth === 1)
@@ -454,9 +475,13 @@ export default function PublishedTunePage({
           <h1>{metadata.title}</h1>
           {metadata.summary && <p className="lede">{metadata.summary}</p>}
           <div className="published-badges">
-            <span className="badge">{metadata.classification}</span>
-            <span className="badge badge-ok">{metadata.validationStatus}</span>
-            {metadata.versionLabel && <span className="badge">{metadata.versionLabel}</span>}
+            <span className={`badge ${isBaseMap ? 'base-map-badge' : ''}`}>
+              {metadata.classification}
+            </span>
+            <span className={`badge validation-badge ${validationClass(metadata.validationStatus)}`}>
+              {metadata.validationStatus}
+            </span>
+            <span className="badge tune-identity-badge">{tuneIdentity(metadata)}</span>
           </div>
         </div>
         <div className="published-owner">
@@ -468,8 +493,8 @@ export default function PublishedTunePage({
           >
             {metadata.author}
           </button>
-          <span>{metadata.publishedAt}</span>
-          {metadata.updatedAt && <span>Updated {metadata.updatedAt}</span>}
+          <span>Published {formatTuneDate(metadata.publishedAt)}</span>
+          {wasUpdated && <span>Updated {formatTuneDate(metadata.updatedAt)}</span>}
           <div className="published-owner-actions">
             <button
               type="button"
@@ -504,6 +529,95 @@ export default function PublishedTunePage({
 
       {tab === 'info' && (
         <>
+          <section className={`panel tune-quick-summary ${isBaseMap ? 'base-map-summary' : ''}`}>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">{isBaseMap ? 'EpicEFI Base Map' : 'Tune summary'}</p>
+                <h2>At a glance</h2>
+              </div>
+              <div className="quick-summary-badges">
+                <span className={`badge validation-badge ${validationClass(metadata.validationStatus)}`}>
+                  {metadata.validationStatus}
+                </span>
+                <span className="badge">{tuneIdentity(metadata)}</span>
+              </div>
+            </div>
+
+            <div className="tune-summary-primary">
+              {vehicleLabel && (
+                <button
+                  type="button"
+                  className="summary-primary-link button-reset"
+                  onClick={() => metadata.vehicle?.make && navigate(vehicleCollectionPath(metadata))}
+                >
+                  <span>Vehicle</span>
+                  <strong>{vehicleLabel}</strong>
+                </button>
+              )}
+              {engineLabel && (
+                <button
+                  type="button"
+                  className="summary-primary-link button-reset"
+                  onClick={() => navigate(engineCollectionPath(metadata))}
+                >
+                  <span>Engine</span>
+                  <strong>{engineLabel}</strong>
+                </button>
+              )}
+              <button
+                type="button"
+                className="summary-primary-link button-reset"
+                onClick={() => navigate(ecuCollectionPath(metadata.ecuTarget))}
+              >
+                <span>ECU target</span>
+                <strong>{metadata.ecuTarget}</strong>
+              </button>
+              {(metadata.fuel || metadata.engine?.aspiration) && (
+                <div className="summary-primary-static">
+                  <span>Setup</span>
+                  <strong>
+                    {[metadata.fuel, metadata.engine?.aspiration].filter(Boolean).join(' · ')}
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            {quickMetrics.length > 0 && (
+              <div className="tune-summary-metrics">
+                {quickMetrics.map((metric) => (
+                  <div key={metric.label}>
+                    <span>{metric.label}</span>
+                    <strong>{metric.value}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="tune-summary-firmware">
+              <div>
+                <span>Firmware</span>
+                <strong title={metadata.firmwareSignature}>
+                  {firmwareSummary(metadata.firmwareSignature)}
+                </strong>
+              </div>
+              <div>
+                <span>Published</span>
+                <strong>{formatTuneDate(metadata.publishedAt)}</strong>
+                {wasUpdated && <small>Edited {formatTuneDate(metadata.updatedAt)}</small>}
+              </div>
+            </div>
+
+            {isBaseMap && (
+              <div className="base-map-safety-callout">
+                <strong>Reference starting point</strong>
+                <span>
+                  A Base Map is not a ready-to-run guarantee. Confirm the exact firmware,
+                  ECU/hardware configuration, injectors, fuel, trigger, ignition and sensors before use.
+                </span>
+              </div>
+            )}
+          </section>
+
           <section className="panel">
             <div className="panel-heading">
               <div>
@@ -567,9 +681,16 @@ export default function PublishedTunePage({
                 value={metadata.ecuTarget}
                 onClick={() => navigate(ecuCollectionPath(metadata.ecuTarget))}
               />
-              <InfoCell label="Firmware signature" value={metadata.firmwareSignature} />
+              <InfoCell label="Firmware summary" value={firmwareSummary(metadata.firmwareSignature)} />
+              <InfoCell label="Exact firmware signature" value={metadata.firmwareSignature} />
               <InfoCell label="Validation" value={metadata.validationStatus} />
               <InfoCell label="Classification" value={metadata.classification} />
+              <InfoCell label="Tune identity" value={tuneIdentity(metadata)} />
+              <InfoCell label="Published" value={formatTuneDate(metadata.publishedAt)} />
+              <InfoCell
+                label="Last same-ID edit"
+                value={wasUpdated ? formatTuneDate(metadata.updatedAt) : 'No later edit recorded'}
+              />
             </div>
             <div className="mismatch tune-safety-note">
               Reference tune only. Verify firmware, hardware, fuel system, trigger and ignition
