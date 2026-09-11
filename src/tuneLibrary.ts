@@ -169,6 +169,11 @@ async function loadPublishedTuneFromMain(
   return publicTuneRecord(raw);
 }
 
+export type TuneDescendant = {
+  tune: PublishedTuneMetadata;
+  depth: number;
+};
+
 export async function findPublishedChildren(
   parentTuneId: string,
 ): Promise<PublishedTuneMetadata[]> {
@@ -180,6 +185,43 @@ export async function findPublishedChildren(
       const rightTime = new Date(right.publishedAt).getTime();
       return leftTime - rightTime;
     });
+}
+
+export async function findPublishedDescendants(
+  parentTuneId: string,
+): Promise<TuneDescendant[]> {
+  const index = await loadTuneIndex();
+  const childrenByParent = new Map<string, PublishedTuneMetadata[]>();
+
+  for (const tune of index.tunes) {
+    if (!tune.parentTuneId) continue;
+    const siblings = childrenByParent.get(tune.parentTuneId) ?? [];
+    siblings.push(tune);
+    childrenByParent.set(tune.parentTuneId, siblings);
+  }
+
+  for (const siblings of childrenByParent.values()) {
+    siblings.sort((left, right) => {
+      const leftTime = new Date(left.publishedAt).getTime();
+      const rightTime = new Date(right.publishedAt).getTime();
+      return leftTime - rightTime;
+    });
+  }
+
+  const descendants: TuneDescendant[] = [];
+  const seen = new Set<string>([parentTuneId]);
+
+  const visit = (parentId: string, depth: number) => {
+    for (const child of childrenByParent.get(parentId) ?? []) {
+      if (seen.has(child.id)) continue;
+      seen.add(child.id);
+      descendants.push({ tune: child, depth });
+      visit(child.id, depth + 1);
+    }
+  };
+
+  visit(parentTuneId, 1);
+  return descendants;
 }
 
 export async function loadTuneAncestors(
