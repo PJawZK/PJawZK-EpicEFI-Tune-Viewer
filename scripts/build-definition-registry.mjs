@@ -90,7 +90,7 @@ async function readMetadata(folder, id) {
     fail(`${id}/metadata.json must contain a JSON object.`);
   }
 
-  const allowed = new Set(['ecuTarget', 'label', 'source', 'expectedSignature']);
+  const allowed = new Set(['ecuTarget', 'label', 'source', 'expectedSignature', 'release']);
   for (const key of Object.keys(parsed)) {
     if (!allowed.has(key)) fail(`${id}/metadata.json contains unsupported property "${key}".`);
   }
@@ -288,51 +288,73 @@ await mkdir(publicRoot, { recursive: true });
 await rm(generatedRoot, { recursive: true, force: true });
 await mkdir(generatedRoot, { recursive: true });
 
-const sourceEntries = await readdir(sourcesRoot, { withFileTypes: true });
+async function findDefinitionFolders(folder, relativeParts = []) {
+  const entries = await readdir(folder, { withFileTypes: true });
+  const found = [];
+
+  if (entries.some((entry) => entry.isFile() && entry.name === 'mainController.ini')) {
+    found.push({ folder, relativeParts });
+  }
+
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    if (!entry.isDirectory()) continue;
+    found.push(
+      ...await findDefinitionFolders(
+        path.join(folder, entry.name),
+        [...relativeParts, entry.name],
+      ),
+    );
+  }
+
+  return found;
+}
+
+const sourceFolders = await findDefinitionFolders(sourcesRoot);
 const registryEntries = [];
 const signatures = new Map();
 
-for (const entry of sourceEntries.sort((left, right) => left.name.localeCompare(right.name))) {
-  if (!entry.isDirectory()) continue;
-
-  const id = entry.name;
-  if (safeSlug(id) !== id) {
-    fail(`Definition source folder "${id}" must already be a lowercase-safe id.`);
+for (const source of sourceFolders.sort(
+  (left, right) => left.relativeParts.join('/').localeCompare(right.relativeParts.join('/')),
+)) {
+  if (source.relativeParts.length === 0) {
+    fail('Definition source mainController.ini cannot live directly in definitions/sources/.');
   }
 
-  const folder = path.join(sourcesRoot, id);
+  const sourcePath = source.relativeParts.join('/');
+  const id = safeSlug(source.relativeParts.join('-'));
+  if (!id) {
+    fail(`Definition source folder "${sourcePath}" cannot be converted to a safe id.`);
+  }
+
+  const folder = source.folder;
   const iniPath = path.join(folder, 'mainController.ini');
-  if (!(await fileExists(iniPath))) {
-    fail(`${id}: missing mainController.ini.`);
-  }
-
-  const metadata = await readMetadata(folder, id);
+  const metadata = await readMetadata(folder, sourcePath);
   const rawIni = await readFile(iniPath, 'utf8');
   const parsed = parseIni(rawIni);
 
   if (metadata.expectedSignature && metadata.expectedSignature !== parsed.signature) {
     fail(
-      `${id}: expectedSignature does not match INI signature. Expected "${metadata.expectedSignature}", got "${parsed.signature}".`,
+      `${sourcePath}: expectedSignature does not match INI signature. Expected "${metadata.expectedSignature}", got "${parsed.signature}".`,
     );
   }
 
   const prior = signatures.get(parsed.signature);
   if (prior) {
     fail(
-      `Duplicate firmware signature "${parsed.signature}" in definition sources "${prior}" and "${id}".`,
+      `Duplicate firmware signature "${parsed.signature}" in definition sources "${prior}" and "${sourcePath}".`,
     );
   }
-  signatures.set(parsed.signature, id);
+  signatures.set(parsed.signature, sourcePath);
 
   const ecuTarget = metadata.ecuTarget || inferEcuTarget(parsed.signature);
   if (!ecuTarget) {
     fail(
-      `${id}: ECU target could not be inferred from signature "${parsed.signature}". Add metadata.json with "ecuTarget".`,
+      `${sourcePath}: ECU target could not be inferred from signature "${parsed.signature}". Add metadata.json with "ecuTarget".`,
     );
   }
 
   const targetSlug = safeSlug(ecuTarget);
-  if (!targetSlug) fail(`${id}: ECU target "${ecuTarget}" cannot be converted to a safe path.`);
+  if (!targetSlug) fail(`${sourcePath}: ECU target "${ecuTarget}" cannot be converted to a safe path.`);
 
   const pack = createPack(parsed, ecuTarget);
   const packedJson = Buffer.from(JSON.stringify(pack), 'utf8');
@@ -355,10 +377,11 @@ for (const entry of sourceEntries.sort((left, right) => left.name.localeCompare(
     dialogCount: parsed.dialogs.length,
     curveCount: parsed.curves.length,
     source: metadata.source || 'EpicEFI mainController.ini',
+    ...(metadata.release ? { release: metadata.release } : {}),
   });
 
   console.log(
-    `Definition ${id}: ${ecuTarget}, ${parsed.constants.length} settings, ${parsed.tables.length} tables, ${parsed.curves.length} curves.`,
+    `Definition ${sourcePath}: ${ecuTarget}, ${parsed.constants.length} settings, ${parsed.tables.length} tables, ${parsed.curves.length} curves.`,
   );
 }
 
