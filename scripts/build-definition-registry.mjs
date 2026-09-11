@@ -226,6 +226,76 @@ function createPack(parsed, ecuTarget) {
 
 const parseIni = await loadSharedIniParser();
 
+function runSelfTest() {
+  const fixture = `
+[MegaTune]
+signature = "EpicEFI test.TESTTARGET.1"
+
+[Constants]
+page = 1
+rpmLimit = scalar, U16, 0, "rpm", 1, 0, 0, 10000, 0
+ignitionMode = bits, U08, 2, [0:1], "Single Coil", "Wasted Spark"
+rpmBins = array, U16, 4, [4], "rpm", 1, 0, 0, 8000, 0
+loadBins = array, U16, 12, [4], "kPa", 1, 0, 0, 300, 0
+fuelTable = array, U16, 20, [4x4], "%", 1, 0, 0, 200, 0
+curveX = array, U16, 52, [4], "degC", 1, 0, -40, 120, 0
+curveY = array, U16, 60, [4], "rpm", 1, 0, 0, 8000, 0
+
+[TableEditor]
+table = fuelTbl, fuelMap, "Fuel Table", 1
+  xBins = rpmBins
+  yBins = loadBins
+  zBins = fuelTable
+  xyLabels = "RPM", "Load"
+
+[CurveEditor]
+curve = limitCurve, "Limit Curve"
+  columnLabel = "Coolant", "RPM Limit"
+  xBins = curveX
+  yBins = curveY
+  xAxis = -40, 120, 9
+  yAxis = 0, 8000, 9
+
+[UserDefined]
+dialog = fuelDialog, "Fuel Settings"
+  field = "RPM Limit", rpmLimit
+  panel = fuelTbl
+
+[Menu]
+menu = "&Fuel"
+  subMenu = fuelDialog, "Fuel Settings"
+`;
+
+  const parsed = parseIni(fixture);
+  if (parsed.signature !== 'EpicEFI test.TESTTARGET.1') {
+    fail('Definition pipeline self-test failed to preserve firmware signature.');
+  }
+  if (parsed.constants.length !== 7) {
+    fail(`Definition pipeline self-test expected 7 constants, got ${parsed.constants.length}.`);
+  }
+  if (parsed.tables.length !== 1 || parsed.curves.length !== 1) {
+    fail('Definition pipeline self-test failed to preserve table/curve metadata.');
+  }
+  if (parsed.dialogs.length !== 1 || parsed.menus.length !== 1) {
+    fail('Definition pipeline self-test failed to preserve dialog/menu metadata.');
+  }
+
+  const pack = createPack(parsed, 'TESTTARGET');
+  if (
+    pack.definitionCount !== parsed.constants.length
+    || pack.tableCount !== parsed.tables.length
+    || pack.menus.length !== parsed.menus.length
+    || pack.dialogs.length !== parsed.dialogs.length
+    || pack.curves.length !== parsed.curves.length
+  ) {
+    fail('Definition pipeline self-test failed while compacting viewer metadata.');
+  }
+
+  console.log('Definition pipeline self-test: PASS');
+}
+
+runSelfTest();
+
 await mkdir(sourcesRoot, { recursive: true });
 await mkdir(publicRoot, { recursive: true });
 await rm(generatedRoot, { recursive: true, force: true });
