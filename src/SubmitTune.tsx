@@ -34,6 +34,7 @@ import { mergeEcuTargets } from './ecuTargets';
 type SubmitTuneProps = {
   navigate: (path: string) => void;
   editId?: string;
+  revisionOfId?: string;
 };
 
 type FormState = {
@@ -159,6 +160,32 @@ const initialForm: FormState = {
   versionLabel: '',
   parentTuneId: '',
 };
+
+function nextRevisionId(parentId: string, ids: Set<string>): string {
+  for (let revision = 2; revision < 1000; revision += 1) {
+    const candidate = `${parentId}-r${revision}`;
+    if (!ids.has(candidate)) return candidate;
+  }
+  return `${parentId}-revision-${Date.now()}`;
+}
+
+function lineageWouldCycle(
+  tuneId: string,
+  parentTuneId: string,
+  parentById: Map<string, string>,
+): boolean {
+  if (!tuneId || !parentTuneId) return false;
+  if (tuneId === parentTuneId) return true;
+
+  const seen = new Set<string>([tuneId]);
+  let cursor = parentTuneId;
+  while (cursor) {
+    if (seen.has(cursor)) return true;
+    seen.add(cursor);
+    cursor = parentById.get(cursor) ?? '';
+  }
+  return false;
+}
 
 function slugify(value: string): string {
   return value
@@ -326,9 +353,11 @@ function TextField({
   );
 }
 
-export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
+export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTuneProps) {
   const [form, setForm] = useState<FormState>(initialForm);
-  const [editLoading, setEditLoading] = useState(Boolean(editId));
+  const sourceTuneId = editId ?? revisionOfId;
+  const isRevision = Boolean(revisionOfId);
+  const [editLoading, setEditLoading] = useState(Boolean(sourceTuneId));
   const [editLoadError, setEditLoadError] = useState('');
   const [originalPublishedAt, setOriginalPublishedAt] = useState('');
   const [originalHadIni, setOriginalHadIni] = useState(false);
@@ -343,6 +372,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
   const [registryEntry, setRegistryEntry] = useState<DefinitionRegistryEntry | null>(null);
   const [registryStatus, setRegistryStatus] = useState<'idle' | 'checking' | 'found' | 'missing'>('idle');
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [parentById, setParentById] = useState<Map<string, string>>(new Map());
   const [registryTargets, setRegistryTargets] = useState<string[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [packaging, setPackaging] = useState(false);
@@ -362,6 +392,11 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
       .then((index) => {
         if (!active) return;
         setExistingIds(new Set(index.tunes.map((entry) => entry.id)));
+        setParentById(new Map(
+          index.tunes
+            .filter((entry) => Boolean(entry.parentTuneId))
+            .map((entry) => [entry.id, entry.parentTuneId ?? '']),
+        ));
       })
       .catch((caught) => {
         if (!active) return;
