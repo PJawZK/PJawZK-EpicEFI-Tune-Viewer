@@ -301,7 +301,13 @@ export default function PublishedTunePage({
         </div>
         <div className="published-owner">
           <span>Published by</span>
-          <strong>{metadata.author}</strong>
+          <button
+            type="button"
+            className="author-link button-reset"
+            onClick={() => navigate(`/author/${encodeURIComponent(metadata.author)}`)}
+          >
+            {metadata.author}
+          </button>
           <span>{metadata.publishedAt}</span>
           {metadata.updatedAt && <span>Updated {metadata.updatedAt}</span>}
           <div className="published-owner-actions">

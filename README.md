@@ -114,6 +114,22 @@ A published tune page includes a **Lineage** tab showing its ancestor chain and 
 
 Repository validation rejects missing lineage parents, self-parenting and circular ancestry.
 
+## Author pages
+
+Published author names now link to metadata-derived author pages at `#/author/<author>`.
+
+Author pages provide:
+
+- all currently published tunes attributed to that exact author name
+- published tune count
+- ECU target summary
+- vehicle and engine summary
+- search within the author's tunes
+- ECU-target and classification filters
+- newest/oldest/title sorting
+
+These are catalog views derived from tune metadata, not authenticated user-account profiles.
+
 ## Deliberately deferred
 
 - ECU write/control
@@ -147,7 +163,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.9 prototype.** Published tune pages now include tune lineage/history relationships and a first-class Create Revision workflow. Revisions create a new Tune ID linked to the source through `parentTuneId`, while Edit Tune continues to modify the existing identity. Repository validation rejects broken/self/circular lineage. V0.8 Tune Compare and the V0.8.x direct publish/edit workflow remain in place.
+**V0.9.1 prototype.** Tune lineage/history and Create Revision remain in place, and published author names now open metadata-driven author pages with tune counts, ECU/vehicle/engine summaries, search, filtering and sorting. These are catalog views rather than authenticated accounts. V0.8 Tune Compare and the V0.8.x direct publish/edit workflow remain in place.
 
 
 ## Multi-firmware definition pipeline
