@@ -30,6 +30,7 @@ import {
 } from './githubSubmission';
 import SelectMenu from './SelectMenu';
 import { mergeEcuTargets } from './ecuTargets';
+import { assertValidTuneId } from './publicationPolicy';
 
 type SubmitTuneProps = {
   navigate: (path: string) => void;
@@ -670,12 +671,18 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
     if (!form.title.trim()) errors.push('Title is required.');
     if (!form.id.trim()) {
       errors.push('Tune ID is required.');
-    } else if (!/^[a-z0-9][a-z0-9._-]*$/.test(form.id.trim())) {
-      errors.push('Tune ID may contain lowercase letters, digits, ".", "_" and "-" only.');
-    } else if (editId && form.id.trim() !== editId) {
-      errors.push('Tune ID cannot be changed while editing a published tune.');
-    } else if (existingIds.has(form.id.trim()) && form.id.trim() !== editId) {
-      errors.push('Tune ID already exists in the public catalog.');
+    } else {
+      try {
+        assertValidTuneId(form.id.trim());
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : 'Tune ID is invalid.');
+      }
+
+      if (editId && form.id.trim() !== editId) {
+        errors.push('Tune ID cannot be changed while editing a published tune.');
+      } else if (existingIds.has(form.id.trim()) && form.id.trim() !== editId) {
+        errors.push('Tune ID already exists in the public catalog.');
+      }
     }
 
     if (!form.author.trim()) errors.push('Author is required.');
@@ -956,7 +963,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       const result = editId
         ? await updateTuneOnGitHub({
             token: githubToken,
-            tuneId: finalMetadata.id,
+            tuneId: editId,
             title: finalMetadata.title,
             firmwareSignature: finalMetadata.firmwareSignature,
             files: [

@@ -1,3 +1,14 @@
+import {
+  assertMetadataMatchesFinalFiles,
+  assertTuneDeleteTargets,
+  assertTuneMetadataIdentity,
+  assertTuneWriteTargets,
+  assertValidTuneId,
+  TUNE_FILE_NAMES,
+  tuneFilePath,
+  type TuneFileName,
+} from './publicationPolicy';
+
 const API_ROOT = 'https://api.github.com';
 const API_VERSION = '2026-03-10';
 const BASE_OWNER = 'PJawZK';
@@ -110,7 +121,33 @@ async function blobToBase64(blob: Blob): Promise<string> {
   return btoa(binary);
 }
 
+async function parseMetadataBlob(blob: Blob): Promise<unknown> {
+  try {
+    return JSON.parse(await blob.text()) as unknown;
+  } catch (error) {
+    throw new Error(
+      `metadata.json is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+function existingCanonicalTuneFiles(
+  tuneId: string,
+  entries: ContentEntry[],
+): Set<TuneFileName> {
+  const names = new Set<TuneFileName>();
+
+  for (const name of TUNE_FILE_NAMES) {
+    const expectedPath = tuneFilePath(tuneId, name);
+    const entry = entries.find((candidate) => candidate.path === expectedPath);
+    if (entry?.type === 'file') names.add(name);
+  }
+
+  return names;
+}
+
 async function ensureTuneIdIsUnused(token: string, tuneId: string) {
+  assertValidTuneId(tuneId);
   const path = `/repos/${BASE_OWNER}/${BASE_REPO}/contents/public/tunes/`
     + `${encodeURIComponent(tuneId)}?ref=${encodeURIComponent(BASE_BRANCH)}`;
 
@@ -179,6 +216,7 @@ async function getTuneFolderEntries(
   token: string,
   tuneId: string,
 ): Promise<ContentEntry[] | null> {
+  assertValidTuneId(tuneId);
   const path = `/repos/${BASE_OWNER}/${BASE_REPO}/contents/public/tunes/`
     + `${encodeURIComponent(tuneId)}?ref=${encodeURIComponent(BASE_BRANCH)}`;
 
@@ -222,6 +260,28 @@ export async function updateTuneOnGitHub({
   deletePaths?: string[];
   onProgress?: (progress: GitHubSubmissionProgress, detail?: string) => void;
 }): Promise<GitHubSubmissionResult> {
+  assertValidTuneId(tuneId);
+  const writeNames = assertTuneWriteTargets(tuneId, files, 'edit');
+  const deleteNames = assertTuneDeleteTargets(tuneId, deletePaths);
+
+  for (const name of deleteNames) {
+    if (writeNames.has(name)) {
+      throw new Error(
+        `Tune edit cannot write and delete "${name}" in the same operation.`,
+      );
+    }
+  }
+
+  const metadataPath = tuneFilePath(tuneId, 'metadata.json');
+  const metadata = files.find((file) => file.path === metadataPath);
+  if (!metadata) throw new Error('Edit submission is missing canonical metadata.json.');
+
+  const metadataIdentity = assertTuneMetadataIdentity(
+    await parseMetadataBlob(metadata.blob),
+    tuneId,
+    firmwareSignature,
+  );
+
   const trimmedToken = token.trim();
   if (!trimmedToken) throw new Error('Enter a GitHub access token.');
 
@@ -251,13 +311,21 @@ export async function updateTuneOnGitHub({
   const byPath = new Map(
     existingEntries.map((entry) => [entry.path, entry]),
   );
-  const metadata = files.find((file) => file.path.endsWith('/metadata.json'));
-  if (!metadata) throw new Error('Edit submission is missing metadata.json.');
 
-  const metadataEntry = byPath.get(metadata.path);
-  if (!metadataEntry) {
+  const metadataEntry = byPath.get(metadataPath);
+  if (!metadataEntry || metadataEntry.type !== 'file') {
     throw new Error('Published tune metadata.json no longer exists on main.');
   }
+
+  const existingNames = existingCanonicalTuneFiles(tuneId, existingEntries);
+  if (!existingNames.has('tune.msq')) {
+    throw new Error('Published tune tune.msq no longer exists on main.');
+  }
+
+  const finalNames = new Set<TuneFileName>(existingNames);
+  for (const name of writeNames) finalNames.add(name);
+  for (const name of deleteNames) finalNames.delete(name);
+  assertMetadataMatchesFinalFiles(metadataIdentity, finalNames);
 
   const stagedFiles = files.filter((file) => file !== metadata);
 
@@ -352,6 +420,20 @@ export async function submitTuneToGitHub({
   files: GitHubSubmissionFile[];
   onProgress?: (progress: GitHubSubmissionProgress, detail?: string) => void;
 }): Promise<GitHubSubmissionResult> {
+  assertValidTuneId(tuneId);
+  const writeNames = assertTuneWriteTargets(tuneId, files, 'create');
+
+  const metadataPath = tuneFilePath(tuneId, 'metadata.json');
+  const metadata = files.find((file) => file.path === metadataPath);
+  if (!metadata) throw new Error('Submission is missing canonical metadata.json.');
+
+  const metadataIdentity = assertTuneMetadataIdentity(
+    await parseMetadataBlob(metadata.blob),
+    tuneId,
+    firmwareSignature,
+  );
+  assertMetadataMatchesFinalFiles(metadataIdentity, writeNames);
+
   const trimmedToken = token.trim();
   if (!trimmedToken) throw new Error('Enter a GitHub access token.');
 
@@ -372,9 +454,6 @@ export async function submitTuneToGitHub({
 
   onProgress?.('checking-main', `${BASE_OWNER}/${BASE_REPO}`);
   await ensureTuneIdIsUnused(trimmedToken, tuneId);
-
-  const metadata = files.find((file) => file.path.endsWith('/metadata.json'));
-  if (!metadata) throw new Error('Submission is missing metadata.json.');
 
   const stagedFiles = files.filter((file) => file !== metadata);
   const created: Array<{ path: string; sha: string }> = [];
