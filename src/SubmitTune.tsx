@@ -13,6 +13,11 @@ import {
 } from './model';
 import { parseMsq } from './msq';
 import { loadTuneIndex } from './tuneLibrary';
+import {
+  submitTuneToGitHub,
+  type GitHubSubmissionProgress,
+  type GitHubSubmissionResult,
+} from './githubSubmission';
 
 type SubmitTuneProps = {
   navigate: (path: string) => void;
@@ -87,6 +92,31 @@ const fallbackIgnitionOptions = [
   'Wasted Spark',
   'Two Distributors',
 ] as const;
+
+const MAX_RAW_PACKAGE_BYTES = 64 * 1024 * 1024;
+const MAX_ZIP_BYTES = 128 * 1024 * 1024;
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MiB`;
+}
+
+function githubProgressLabel(
+  progress: GitHubSubmissionProgress | '',
+  detail: string,
+): string {
+  const labels: Record<GitHubSubmissionProgress, string> = {
+    authenticating: 'Authenticating with GitHub',
+    'preparing-repository': 'Preparing GitHub repository',
+    'preparing-branch': 'Preparing submission branch',
+    'uploading-files': 'Uploading tune files',
+    'creating-commit': 'Creating submission commit',
+    'opening-pr': 'Opening pull request',
+  };
+
+  return progress ? `${labels[progress]}${detail ? ` · ${detail}` : ''}` : '';
+}
 
 const initialForm: FormState = {
   id: '',
@@ -243,10 +273,8 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
   const [form, setForm] = useState<FormState>(initialForm);
   const [idTouched, setIdTouched] = useState(false);
   const [msqFile, setMsqFile] = useState<File | null>(null);
-  const [msqText, setMsqText] = useState('');
   const [tune, setTune] = useState<ParsedTune | null>(null);
   const [iniFile, setIniFile] = useState<File | null>(null);
-  const [iniText, setIniText] = useState('');
   const [ini, setIni] = useState<ParsedIni | null>(null);
   const [fileError, setFileError] = useState('');
   const [registryEntry, setRegistryEntry] = useState<DefinitionRegistryEntry | null>(null);
@@ -255,7 +283,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
   const [catalogError, setCatalogError] = useState('');
   const [packaging, setPackaging] = useState(false);
   const [packageError, setPackageError] = useState('');
+  const [packageStats, setPackageStats] = useState<{ raw: number; zip: number } | null>(null);
   const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
+  const [githubToken, setGitHubToken] = useState('');
+  const [githubSubmitting, setGitHubSubmitting] = useState(false);
+  const [githubProgress, setGitHubProgress] = useState<GitHubSubmissionProgress | ''>('');
+  const [githubProgressDetail, setGitHubProgressDetail] = useState('');
+  const [githubError, setGitHubError] = useState('');
+  const [githubResult, setGitHubResult] = useState<GitHubSubmissionResult | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -285,6 +320,11 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       signatureMatch
       || (registryStatus === 'found' && registryEntry?.signature === tune.details.signature)
     ),
+  );
+  const shouldIncludeIni = Boolean(
+    registryStatus !== 'found'
+    && iniFile
+    && signatureMatch,
   );
 
   const modelYearOptions = useMemo(() => {
@@ -363,15 +403,18 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       parentTuneId: form.parentTuneId.trim() || undefined,
       files: {
         msq: 'tune.msq',
-        ...(iniFile ? { ini: 'mainController.ini' } : {}),
+        ...(shouldIncludeIni ? { ini: 'mainController.ini' } : {}),
       },
     }) as PublishedTuneMetadata;
-  }, [form, iniFile, tune]);
+  }, [form, shouldIncludeIni, tune]);
 
   const validationErrors = useMemo(() => {
     const errors: string[] = [];
     if (!msqFile || !tune) errors.push('Load a valid EpicEFI MSQ.');
     if (!definitionReady) errors.push('Provide an exact matching firmware definition.');
+    if (ini && !signatureMatch) {
+      errors.push('The selected local INI does not match the MSQ firmware signature.');
+    }
     if (!form.title.trim()) errors.push('Title is required.');
     if (!form.id.trim()) {
       errors.push('Tune ID is required.');
@@ -391,7 +434,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       errors.push('Parent tune ID must already exist in the public catalog.');
     }
     return errors;
-  }, [definitionReady, existingIds, form, msqFile, tune]);
+  }, [definitionReady, existingIds, form, ini, msqFile, signatureMatch, tune]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -402,10 +445,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
     setFileError('');
     setPackageError('');
+    setPackageStats(null);
+    setGitHubError('');
+    setGitHubResult(null);
     setRegistryEntry(null);
     setRegistryStatus('idle');
     setIniFile(null);
-    setIniText('');
     setIni(null);
 
     try {
@@ -416,7 +461,6 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       }
 
       setMsqFile(file);
-      setMsqText(raw);
       setTune(parsed);
 
       const inferredTarget = inferEcuTarget(parsed.details.signature);
@@ -462,7 +506,6 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       }
     } catch (caught) {
       setMsqFile(null);
-      setMsqText('');
       setTune(null);
       setFileError(caught instanceof Error ? caught.message : 'Unable to parse this MSQ.');
     }
@@ -473,19 +516,48 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
     setFileError('');
     setPackageError('');
+    setPackageStats(null);
+    setGitHubError('');
+    setGitHubResult(null);
 
     try {
       const raw = await file.text();
       const parsed = parseIni(raw);
       setIniFile(file);
-      setIniText(raw);
       setIni(parsed);
     } catch (caught) {
       setIniFile(null);
-      setIniText('');
       setIni(null);
       setFileError(caught instanceof Error ? caught.message : 'Unable to parse this INI.');
     }
+  }
+
+  function submissionText(metadata: PublishedTuneMetadata): string {
+    return [
+      'EpicEFI Tune Viewer GitHub prototype submission',
+      '',
+      `Tune ID: ${metadata.id}`,
+      `Firmware signature: ${metadata.firmwareSignature}`,
+      '',
+      'To publish during the GitHub prototype phase:',
+      `1. Add this folder under public/tunes/${metadata.id}/ in the repository.`,
+      '2. Open a pull request.',
+      '3. GitHub Actions validates the submission and regenerates the public Tune Hub index.',
+      '4. Do not edit public/tunes/index.json manually.',
+      '',
+      'The tune remains reference material. Validation/classification badges describe the submission',
+      'and do not guarantee that it is safe for a different vehicle or engine.',
+    ].join('\n');
+  }
+
+  function packageMetadata(metadata: PublishedTuneMetadata): PublishedTuneMetadata {
+    return {
+      ...metadata,
+      files: {
+        msq: 'tune.msq',
+        ...(shouldIncludeIni ? { ini: 'mainController.ini' } : {}),
+      },
+    };
   }
 
   async function createPackage() {
@@ -493,51 +565,135 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
     setPackaging(true);
     setPackageError('');
+    setPackageStats(null);
 
     try {
-      const zip = new JSZip();
-      const folder = zip.folder(metadata.id);
-      if (!folder) throw new Error('Unable to create submission folder.');
-
-      const packageMetadata: PublishedTuneMetadata = {
-        ...metadata,
-        files: {
-          msq: 'tune.msq',
-          ...(iniFile ? { ini: 'mainController.ini' } : {}),
-        },
-      };
-
-      folder.file('metadata.json', JSON.stringify(packageMetadata, null, 2) + '\n');
-      folder.file('tune.msq', msqText);
-      if (iniFile) folder.file('mainController.ini', iniText);
-
-      folder.file(
-        'SUBMISSION.txt',
-        [
-          'EpicEFI Tune Viewer GitHub prototype submission',
-          '',
-          `Tune ID: ${metadata.id}`,
-          `Firmware signature: ${metadata.firmwareSignature}`,
-          '',
-          'To publish during the GitHub prototype phase:',
-          `1. Add this folder under public/tunes/${metadata.id}/ in the repository.`,
-          '2. Open a pull request.',
-          '3. GitHub Actions validates metadata/file references and regenerates the public Tune Hub index.',
-          '4. Do not edit public/tunes/index.json manually.',
-          '',
-          'The tune remains reference material. Validation/classification badges describe the submission',
-          'and do not guarantee that it is safe for a different vehicle or engine.',
-        ].join('\n'),
+      const finalMetadata = packageMetadata(metadata);
+      const metadataBlob = new Blob(
+        [JSON.stringify(finalMetadata, null, 2) + '\n'],
+        { type: 'application/json' },
+      );
+      const instructionsBlob = new Blob(
+        [submissionText(finalMetadata)],
+        { type: 'text/plain' },
       );
 
-      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
-      downloadBlob(blob, `${metadata.id}-epicefi-tune-submission.zip`);
+      const rawBytes =
+        metadataBlob.size
+        + instructionsBlob.size
+        + msqFile.size
+        + (shouldIncludeIni && iniFile ? iniFile.size : 0);
+
+      if (rawBytes > MAX_RAW_PACKAGE_BYTES) {
+        throw new Error(
+          `Submission inputs total ${formatBytes(rawBytes)}, above the `
+          + `${formatBytes(MAX_RAW_PACKAGE_BYTES)} browser packaging limit.`,
+        );
+      }
+
+      const zip = new JSZip();
+      const folder = zip.folder(finalMetadata.id);
+      if (!folder) throw new Error('Unable to create submission folder.');
+
+      folder.file('metadata.json', metadataBlob);
+      folder.file('tune.msq', msqFile);
+      if (shouldIncludeIni && iniFile) {
+        folder.file('mainController.ini', iniFile);
+      }
+      folder.file('SUBMISSION.txt', instructionsBlob);
+
+      const blob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      });
+
+      const expansionLimit = Math.max(
+        16 * 1024 * 1024,
+        rawBytes * 4 + 2 * 1024 * 1024,
+      );
+
+      if (blob.size > MAX_ZIP_BYTES || blob.size > expansionLimit) {
+        throw new Error(
+          `Generated ZIP is unexpectedly large (${formatBytes(blob.size)}) from `
+          + `${formatBytes(rawBytes)} of input. Download was blocked instead of producing `
+          + 'a potentially corrupt archive.',
+        );
+      }
+
+      setPackageStats({ raw: rawBytes, zip: blob.size });
+      downloadBlob(blob, `${finalMetadata.id}-epicefi-tune-submission.zip`);
     } catch (caught) {
       setPackageError(
         caught instanceof Error ? caught.message : 'Unable to create submission package.',
       );
     } finally {
       setPackaging(false);
+    }
+  }
+
+  async function submitToGitHub() {
+    if (!metadata || validationErrors.length || !msqFile || !tune) return;
+
+    setGitHubSubmitting(true);
+    setGitHubError('');
+    setGitHubResult(null);
+    setGitHubProgress('');
+    setGitHubProgressDetail('');
+
+    try {
+      const finalMetadata = packageMetadata(metadata);
+      const basePath = `public/tunes/${finalMetadata.id}`;
+      const files = [
+        {
+          path: `${basePath}/metadata.json`,
+          blob: new Blob(
+            [JSON.stringify(finalMetadata, null, 2) + '\n'],
+            { type: 'application/json' },
+          ),
+        },
+        {
+          path: `${basePath}/tune.msq`,
+          blob: msqFile,
+        },
+      ];
+
+      if (shouldIncludeIni && iniFile) {
+        files.push({
+          path: `${basePath}/mainController.ini`,
+          blob: iniFile,
+        });
+      }
+
+      const rawBytes = files.reduce((sum, entry) => sum + entry.blob.size, 0);
+      if (rawBytes > MAX_RAW_PACKAGE_BYTES) {
+        throw new Error(
+          `GitHub submission inputs total ${formatBytes(rawBytes)}, above the `
+          + `${formatBytes(MAX_RAW_PACKAGE_BYTES)} browser upload limit.`,
+        );
+      }
+
+      const result = await submitTuneToGitHub({
+        token: githubToken,
+        tuneId: finalMetadata.id,
+        title: finalMetadata.title,
+        firmwareSignature: finalMetadata.firmwareSignature,
+        files,
+        onProgress: (progress, detail = '') => {
+          setGitHubProgress(progress);
+          setGitHubProgressDetail(detail);
+        },
+      });
+
+      setGitHubResult(result);
+      setGitHubProgress('');
+      setGitHubProgressDetail('');
+    } catch (caught) {
+      setGitHubError(
+        caught instanceof Error ? caught.message : 'Unable to submit this tune to GitHub.',
+      );
+    } finally {
+      setGitHubSubmitting(false);
     }
   }
 
@@ -640,6 +796,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <div className="mismatch">
             This firmware is not in the public definition registry. Load its exact matching{' '}
             <code>mainController.ini</code> to continue.
+          </div>
+        )}
+
+        {tune && registryStatus === 'found' && iniFile && signatureMatch && (
+          <div className="autofill-note">
+            <strong>Public definition available:</strong>
+            <span>The selected INI is used for local metadata choices but will not be duplicated in the tune package.</span>
+            <small>The published tune references the exact registered firmware signature instead.</small>
           </div>
         )}
       </section>
@@ -896,14 +1060,100 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
         {packageError && <div className="mismatch">{packageError}</div>}
 
+        {packageStats && (
+          <div className="package-size-check">
+            <span>Raw package input <strong>{formatBytes(packageStats.raw)}</strong></span>
+            <span>Generated ZIP <strong>{formatBytes(packageStats.zip)}</strong></span>
+          </div>
+        )}
+
+        <div className="github-submit-panel">
+          <div className="github-submit-heading">
+            <div>
+              <p className="eyebrow">Direct GitHub submission</p>
+              <h3>Create branch and pull request</h3>
+            </div>
+            <span className="badge">Token stays in page memory</span>
+          </div>
+
+          <label className="submit-field full">
+            <span>GitHub access token</span>
+            <input
+              type="password"
+              value={githubToken}
+              autoComplete="off"
+              onChange={(event) => setGitHubToken(event.target.value)}
+              placeholder="github_pat_… or ghp_…"
+            />
+            <small>
+              The token is not written to localStorage, the ZIP, tune metadata, commits, or logs.
+              It is sent from this page only to GitHub's API. Repository collaborators need Contents
+              write and Pull requests write. Non-collaborators are routed through a fork when GitHub
+              permits the token to create/sync one.
+            </small>
+          </label>
+
+          {githubProgress && (
+            <div className="github-progress">
+              {githubProgressLabel(githubProgress, githubProgressDetail)}
+            </div>
+          )}
+
+          {githubError && <div className="mismatch">{githubError}</div>}
+
+          {githubResult && (
+            <div className="github-success">
+              <div>
+                <strong>Pull request #{githubResult.pullRequestNumber} created</strong>
+                <span>
+                  {githubResult.usedFork
+                    ? `Fork workflow · ${githubResult.targetRepository}`
+                    : `Repository branch · ${githubResult.targetRepository}`}
+                </span>
+              </div>
+              <a
+                className="open-button"
+                href={githubResult.pullRequestUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open pull request
+              </a>
+            </div>
+          )}
+
+          <div className="submission-actions">
+            <button
+              type="button"
+              className="open-button button-reset"
+              disabled={
+                validationErrors.length > 0
+                || githubSubmitting
+                || !githubToken.trim()
+              }
+              onClick={() => void submitToGitHub()}
+            >
+              {githubSubmitting ? 'Submitting to GitHub…' : 'Submit to GitHub'}
+            </button>
+            <a
+              className="open-button secondary"
+              href="https://github.com/settings/tokens"
+              target="_blank"
+              rel="noreferrer"
+            >
+              GitHub token settings
+            </a>
+          </div>
+        </div>
+
         <div className="submission-actions">
           <button
             type="button"
-            className="open-button button-reset"
+            className="open-button secondary button-reset"
             disabled={validationErrors.length > 0 || packaging}
             onClick={() => void createPackage()}
           >
-            {packaging ? 'Creating package…' : 'Download submission ZIP'}
+            {packaging ? 'Creating package…' : 'Download submission ZIP instead'}
           </button>
           <a
             className="open-button secondary"
@@ -916,13 +1166,15 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         </div>
 
         <p className="table-note">
-          The ZIP contains one folder ready for <code>public/tunes/&lt;tune-id&gt;/</code>. GitHub
-          Actions performs the repository-side validation and generates the public index after a pull request.
+          Direct submission writes only <code>metadata.json</code>, <code>tune.msq</code>, and the
+          matching <code>mainController.ini</code> when the firmware is not already registered.
+          It creates a pull request; it never writes directly to <code>main</code>. The ZIP option
+          remains available for manual/offline submission.
         </p>
       </section>
 
       <footer>
-        Submission builder — local files are parsed and packaged in your browser. Nothing is uploaded automatically.
+        Submission builder — local files remain in your browser unless you explicitly choose Submit to GitHub.
       </footer>
     </main>
   );
