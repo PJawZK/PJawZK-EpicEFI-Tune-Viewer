@@ -36,7 +36,7 @@ export function parseMsq(raw: string): ParsedTune {
 
         constants.push({
           name,
-          value: (element.textContent ?? '').replaceAll('"', '').trim(),
+          value: (element.textContent ?? '').replace(/"/g, '').trim(),
           units: element.getAttribute('units'),
           page: numberAttr(page, 'number') ?? pageIndex,
           rows: numberAttr(element, 'rows'),
