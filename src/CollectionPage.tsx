@@ -51,16 +51,6 @@ function uniqueSorted(values: Array<string | undefined>): string[] {
   )].sort((left, right) => left.localeCompare(right));
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
-}
-
 function searchText(tune: PublishedTuneMetadata): string {
   return [
     tune.title,
