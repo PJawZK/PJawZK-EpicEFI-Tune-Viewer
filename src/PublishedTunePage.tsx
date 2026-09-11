@@ -12,10 +12,15 @@ import type {
 import { parseMsq } from './msq';
 import TuneBrowser from './TuneBrowser';
 import {
+  rankRelatedTunes,
+  type RelatedTune,
+} from './tuneDiscovery';
+import {
   findPublishedDescendants,
   findPublishedTune,
   loadPublishedText,
   loadTuneAncestors,
+  loadTuneIndex,
   publicAssetUrl,
   type TuneDescendant,
 } from './tuneLibrary';
@@ -112,6 +117,50 @@ function LineageTuneCard({
   );
 }
 
+function RelatedTuneCard({
+  related,
+  navigate,
+}: {
+  related: RelatedTune;
+  navigate: (path: string) => void;
+}) {
+  const { tune, reasons } = related;
+  const vehicle = [
+    tune.vehicle?.year,
+    tune.vehicle?.make,
+    tune.vehicle?.model,
+  ].filter(Boolean).join(' ');
+
+  return (
+    <article className="related-tune-card">
+      <div className="related-tune-card-top">
+        <div>
+          <p className="eyebrow">{vehicle || tune.ecuTarget}</p>
+          <h3>{tune.title}</h3>
+        </div>
+        <div className="related-tune-badges">
+          <span className="badge">{tune.classification}</span>
+          <span className="badge badge-ok">{tune.validationStatus}</span>
+        </div>
+      </div>
+
+      {tune.summary && <p>{tune.summary}</p>}
+
+      <div className="related-reasons">
+        {reasons.map((reason) => <span key={reason}>{reason}</span>)}
+      </div>
+
+      <button
+        type="button"
+        className="related-open button-reset"
+        onClick={() => navigate(`/t/${encodeURIComponent(tune.id)}/info`)}
+      >
+        Open related tune
+      </button>
+    </article>
+  );
+}
+
 function routeFor(id: string, tab: PublishedTunePageProps['tab']): string {
   return `/t/${encodeURIComponent(id)}/${tab}`;
 }
@@ -133,6 +182,9 @@ export default function PublishedTunePage({
   const [descendants, setDescendants] = useState<TuneDescendant[]>([]);
   const [lineageLoading, setLineageLoading] = useState(false);
   const [lineageError, setLineageError] = useState('');
+  const [relatedTunes, setRelatedTunes] = useState<RelatedTune[]>([]);
+  const [relatedLoading, setRelatedLoading] = useState(false);
+  const [relatedError, setRelatedError] = useState('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -265,6 +317,41 @@ export default function PublishedTunePage({
           caught instanceof Error ? caught.message : 'Unable to load tune lineage.',
         );
         setLineageLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [metadata, tab]);
+
+  useEffect(() => {
+    if (tab !== 'info' || !metadata) return;
+
+    let active = true;
+    setRelatedLoading(true);
+    setRelatedError('');
+    setRelatedTunes([]);
+
+    loadTuneIndex()
+      .then(async (index) => {
+        const ranked = rankRelatedTunes(metadata, index.tunes, 6);
+        const refreshed = await Promise.all(
+          ranked.map(async (entry) => ({
+            ...entry,
+            tune: await findPublishedTune(entry.tune.id) ?? entry.tune,
+          })),
+        );
+
+        if (!active) return;
+        setRelatedTunes(refreshed);
+        setRelatedLoading(false);
+      })
+      .catch((caught) => {
+        if (!active) return;
+        setRelatedError(
+          caught instanceof Error ? caught.message : 'Unable to load related tunes.',
+        );
+        setRelatedLoading(false);
       });
 
     return () => {
@@ -459,6 +546,45 @@ export default function PublishedTunePage({
               {metadata.tags.length > 0 && (
                 <div className="tune-tags">
                   {metadata.tags.map((tag) => <span key={tag}>{tag}</span>)}
+                </div>
+              )}
+            </section>
+          )}
+
+          {(relatedLoading || relatedError || relatedTunes.length > 0) && (
+            <section className="panel related-tunes-panel">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">Discovery</p>
+                  <h2>Related tunes</h2>
+                </div>
+                {!relatedLoading && !relatedError && (
+                  <span className="badge">{relatedTunes.length} suggestions</span>
+                )}
+              </div>
+
+              <p className="table-note">
+                Related tunes are ranked from published metadata such as engine, vehicle, ECU target,
+                aspiration, fuel, tags and lineage. Similarity is not a compatibility guarantee.
+              </p>
+
+              {relatedLoading && (
+                <div className="related-loading">Finding related published tunes…</div>
+              )}
+
+              {relatedError && (
+                <div className="related-error">{relatedError}</div>
+              )}
+
+              {!relatedLoading && !relatedError && relatedTunes.length > 0 && (
+                <div className="related-tune-grid">
+                  {relatedTunes.map((related) => (
+                    <RelatedTuneCard
+                      key={related.tune.id}
+                      related={related}
+                      navigate={navigate}
+                    />
+                  ))}
                 </div>
               )}
             </section>
