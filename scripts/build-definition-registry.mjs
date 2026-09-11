@@ -9,9 +9,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
-import * as tsModule from 'typescript';
-
-const ts = tsModule.default ?? tsModule;
+import { pathToFileURL } from 'node:url';
 
 const root = process.cwd();
 const sourcesRoot = path.join(root, 'definitions', 'sources');
@@ -58,30 +56,17 @@ async function fileExists(filePath) {
 
 async function loadSharedIniParser() {
   const sourcePath = path.join(root, 'src', 'ini.ts');
-  const source = await readFile(sourcePath, 'utf8');
 
-  const transpiled = ts.transpileModule(source, {
-    compilerOptions: {
-      module: ts.ModuleKind.ESNext,
-      target: ts.ScriptTarget.ES2020,
-    },
-    fileName: sourcePath,
-    reportDiagnostics: true,
-  });
-
-  const errors = (transpiled.diagnostics ?? []).filter(
-    (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-  );
-  if (errors.length) {
-    const messages = errors.map((diagnostic) =>
-      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+  let module;
+  try {
+    module = await import(pathToFileURL(sourcePath).href);
+  } catch (error) {
+    fail(
+      'Unable to load shared src/ini.ts parser with the current Node runtime. '
+      + 'Use Node 24 or newer for definition generation. '
+      + (error instanceof Error ? error.message : String(error)),
     );
-    fail(`Unable to transpile shared INI parser:\n${messages.join('\n')}`);
   }
-
-  const moduleUrl =
-    'data:text/javascript;base64,' + Buffer.from(transpiled.outputText, 'utf8').toString('base64');
-  const module = await import(moduleUrl);
 
   if (typeof module.parseIni !== 'function') {
     fail('Shared src/ini.ts parser did not export parseIni().');
