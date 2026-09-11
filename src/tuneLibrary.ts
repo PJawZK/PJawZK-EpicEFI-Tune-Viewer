@@ -1,9 +1,22 @@
 import type { PublishedTuneIndex, PublishedTuneMetadata } from './model';
 
+const RAW_MAIN_ROOT =
+  'https://raw.githubusercontent.com/PJawZK/PJawZK-EpicEFI-Tune-Viewer/main/';
+
 let indexPromise: Promise<PublishedTuneIndex> | null = null;
 
 export function publicAssetUrl(path: string): string {
   return new URL(path.replace(/^\/+/, ''), document.baseURI).toString();
+}
+
+function rawMainUrl(path: string): string {
+  const encoded = path
+    .replace(/^\/+/, '')
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+
+  return `${RAW_MAIN_ROOT}${encoded}?v=${Date.now()}`;
 }
 
 function isString(value: unknown): value is string {
@@ -30,9 +43,33 @@ function isTuneRecord(value: unknown): value is PublishedTuneMetadata {
   );
 }
 
+function publicTuneRecord(record: PublishedTuneMetadata): PublishedTuneMetadata {
+  const prefix = `tunes/${record.id}/`;
+  const msq = record.files.msq.includes('/')
+    ? record.files.msq
+    : prefix + record.files.msq;
+  const ini = record.files.ini
+    ? (record.files.ini.includes('/') ? record.files.ini : prefix + record.files.ini)
+    : undefined;
+
+  return {
+    ...record,
+    files: {
+      msq,
+      ...(ini ? { ini } : {}),
+    },
+  };
+}
+
+export function invalidateTuneIndex() {
+  indexPromise = null;
+}
+
 export async function loadTuneIndex(): Promise<PublishedTuneIndex> {
   if (!indexPromise) {
-    indexPromise = fetch(publicAssetUrl('tunes/index.json')).then(async (response) => {
+    indexPromise = fetch(publicAssetUrl('tunes/index.json'), {
+      cache: 'no-store',
+    }).then(async (response) => {
       if (!response.ok) {
         throw new Error(`Tune index request failed with HTTP ${response.status}.`);
       }
@@ -69,13 +106,70 @@ export async function loadTuneIndex(): Promise<PublishedTuneIndex> {
   return indexPromise;
 }
 
+async function loadPublishedTuneFromMain(
+  id: string,
+): Promise<PublishedTuneMetadata | null> {
+  const safeId = id.trim();
+  if (!safeId || safeId.includes('/') || safeId.includes('\\') || safeId.includes('..')) {
+    return null;
+  }
+
+  const response = await fetch(
+    rawMainUrl(`public/tunes/${safeId}/metadata.json`),
+    { cache: 'no-store' },
+  );
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(
+      `Live tune metadata request failed with HTTP ${response.status}.`,
+    );
+  }
+
+  const raw = await response.json() as unknown;
+  if (!isTuneRecord(raw)) {
+    throw new Error('Live tune metadata is invalid.');
+  }
+
+  if (raw.id !== safeId) {
+    throw new Error(
+      `Live tune metadata id "${raw.id}" does not match folder "${safeId}".`,
+    );
+  }
+
+  return publicTuneRecord(raw);
+}
+
 export async function findPublishedTune(id: string): Promise<PublishedTuneMetadata | null> {
+  try {
+    const live = await loadPublishedTuneFromMain(id);
+    if (live) return live;
+  } catch {
+    // Fall back to the deployed catalog if GitHub raw content is temporarily unavailable.
+  }
+
   const index = await loadTuneIndex();
   return index.tunes.find((tune) => tune.id === id) ?? null;
 }
 
 export async function loadPublishedText(path: string): Promise<string> {
-  const response = await fetch(publicAssetUrl(path));
+  const clean = path.replace(/^\/+/, '');
+
+  if (clean.startsWith('tunes/') && !clean.includes('..')) {
+    try {
+      const live = await fetch(
+        rawMainUrl(`public/${clean}`),
+        { cache: 'no-store' },
+      );
+      if (live.ok) return live.text();
+    } catch {
+      // Fall through to the deployed Pages asset.
+    }
+  }
+
+  const response = await fetch(publicAssetUrl(clean), {
+    cache: 'no-store',
+  });
   if (!response.ok) {
     throw new Error(`Published tune asset request failed with HTTP ${response.status}.`);
   }
