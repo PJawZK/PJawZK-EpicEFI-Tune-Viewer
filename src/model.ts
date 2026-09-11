@@ -36,6 +36,8 @@ export type IniConstantDefinition = {
   scale: string | null;
   translate: string | null;
   digits: string | null;
+  min: string | null;
+  max: string | null;
   options: string[];
 };
 
@@ -43,6 +45,8 @@ export type IniTableDefinition = {
   id: string;
   mapId: string;
   title: string;
+  page: number | null;
+  help: string;
   xBins: string;
   yBins: string;
   zBins: string;
@@ -50,10 +54,70 @@ export type IniTableDefinition = {
   yLabel: string;
 };
 
+export type IniCurveDefinition = {
+  id: string;
+  title: string;
+  labels: string[];
+  xBins: string[];
+  yBins: string[];
+  xAxis: string[];
+  yAxis: string[];
+  gauge: string;
+};
+
+export type IniDialogField = {
+  title: string;
+  name: string;
+  condition: string;
+};
+
+export type IniDialogPanel = {
+  name: string;
+  layout: string;
+  condition: string;
+};
+
+export type IniDialogDefinition = {
+  id: string;
+  title: string;
+  layout: string;
+  help: string;
+  fields: IniDialogField[];
+  panels: IniDialogPanel[];
+};
+
+export type IniMenuItem =
+  | {
+      type: 'item';
+      target: string;
+      title: string;
+      condition: string;
+    }
+  | {
+      type: 'separator';
+      target: string;
+      title: string;
+      condition: string;
+    }
+  | {
+      type: 'group';
+      title: string;
+      children: IniMenuItem[];
+    };
+
+export type IniMenuDefinition = {
+  id: string;
+  title: string;
+  items: IniMenuItem[];
+};
+
 export type ParsedIni = {
   signature: string;
   constants: IniConstantDefinition[];
   tables: IniTableDefinition[];
+  curves: IniCurveDefinition[];
+  dialogs: IniDialogDefinition[];
+  menus: IniMenuDefinition[];
   labelSets: Record<string, string[]>;
 };
 
