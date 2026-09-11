@@ -6,6 +6,7 @@ import {
   parseValidationAuthority,
   VALIDATION_STATUSES,
 } from './validation-policy.mjs';
+import { assertValidTuneId } from '../src/publicationPolicy.ts';
 
 const root = process.cwd();
 const tunesRoot = path.join(root, 'public', 'tunes');
@@ -225,8 +226,10 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   if (tune.id !== entry.name) {
     fail(`${context}: "id" must exactly match its folder name "${entry.name}".`);
   }
-  if (!/^[a-z0-9][a-z0-9._-]*$/.test(tune.id)) {
-    fail(`${context}: id may contain lowercase letters, digits, ".", "_" and "-" only.`);
+  try {
+    assertValidTuneId(tune.id, `${context}: id`);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
   }
   if (!VALIDATION_STATUSES.has(tune.validationStatus)) {
     fail(`${context}: unsupported validationStatus "${tune.validationStatus}".`);
