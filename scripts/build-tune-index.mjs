@@ -4,6 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const tunesRoot = path.join(root, 'public', 'tunes');
 const indexPath = path.join(tunesRoot, 'index.json');
+const definitionRegistryPath = path.join(root, 'public', 'definitions', 'registry.json');
 
 const validationStatuses = new Set([
   'Unverified',
@@ -69,6 +70,71 @@ async function assertFileExists(filePath, context) {
   }
 }
 
+function extractMsqSignature(raw, context) {
+  const versionInfo = raw.match(
+    /<(?:[A-Za-z0-9_.-]+:)?versionInfo\b[^>]*>/i,
+  )?.[0];
+
+  if (!versionInfo) {
+    fail(`${context}: MSQ versionInfo is missing.`);
+  }
+
+  const signature = versionInfo.match(
+    /\bsignature\s*=\s*["']([^"']+)["']/i,
+  )?.[1]?.trim();
+
+  if (!signature) {
+    fail(`${context}: MSQ firmware signature is missing.`);
+  }
+
+  return signature;
+}
+
+function extractIniSignature(raw, context) {
+  const lines = raw.replace(/\r\n/g, '\n').split('\n');
+  let section = '';
+
+  for (const sourceLine of lines) {
+    const line = sourceLine.trim();
+    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+    if (sectionMatch) {
+      section = sectionMatch[1];
+      continue;
+    }
+
+    if (section !== 'MegaTune' && section !== 'TunerStudio') continue;
+
+    const signature = line.match(/^signature\s*=\s*["']([^"']+)["']/i)?.[1]?.trim();
+    if (signature) return signature;
+  }
+
+  fail(`${context}: INI firmware signature is missing.`);
+}
+
+async function loadDefinitionRegistry() {
+  let raw;
+  try {
+    raw = await readFile(definitionRegistryPath, 'utf8');
+  } catch {
+    fail('public/definitions/registry.json is missing. Run the definition build first.');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    fail(`public/definitions/registry.json: invalid JSON: ${error.message}`);
+  }
+
+  if (!parsed || !Array.isArray(parsed.definitions)) {
+    fail('public/definitions/registry.json: "definitions" must be an array.');
+  }
+
+  return new Map(
+    parsed.definitions.map((entry) => [entry.signature, entry]),
+  );
+}
+
 function validateNestedObject(value, allowedKeys, context) {
   if (value === undefined) return;
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -82,7 +148,7 @@ function validateNestedObject(value, allowedKeys, context) {
   }
 }
 
-async function loadTuneFolder(entry) {
+async function loadTuneFolder(entry, definitionRegistry) {
   const folder = path.join(tunesRoot, entry.name);
   const metadataPath = path.join(folder, 'metadata.json');
   let raw;
@@ -200,11 +266,56 @@ async function loadTuneFolder(entry) {
   }
 
   validateRelativeFileName(tune.files.msq, '.msq', `${context}: files.msq`);
-  await assertFileExists(path.join(folder, tune.files.msq), `${context}: files.msq`);
+  const msqPath = path.join(folder, tune.files.msq);
+  await assertFileExists(msqPath, `${context}: files.msq`);
+
+  const msqSignature = extractMsqSignature(
+    await readFile(msqPath, 'utf8'),
+    `${context}: files.msq`,
+  );
+
+  if (msqSignature !== tune.firmwareSignature) {
+    fail(
+      `${context}: firmwareSignature does not match the MSQ. `
+      + `Metadata="${tune.firmwareSignature}", MSQ="${msqSignature}".`,
+    );
+  }
 
   if (tune.files.ini !== undefined) {
     validateRelativeFileName(tune.files.ini, '.ini', `${context}: files.ini`);
-    await assertFileExists(path.join(folder, tune.files.ini), `${context}: files.ini`);
+    const iniPath = path.join(folder, tune.files.ini);
+    await assertFileExists(iniPath, `${context}: files.ini`);
+
+    const iniSignature = extractIniSignature(
+      await readFile(iniPath, 'utf8'),
+      `${context}: files.ini`,
+    );
+
+    if (iniSignature !== msqSignature) {
+      fail(
+        `${context}: INI signature does not match the MSQ. `
+        + `MSQ="${msqSignature}", INI="${iniSignature}".`,
+      );
+    }
+  } else {
+    const registryEntry = definitionRegistry.get(msqSignature);
+    if (!registryEntry) {
+      fail(
+        `${context}: no INI is included and exact firmware signature "${msqSignature}" `
+        + 'is not present in the public definition registry.',
+      );
+    }
+
+    if (
+      typeof registryEntry.ecuTarget === 'string'
+      && registryEntry.ecuTarget
+      && registryEntry.ecuTarget !== tune.ecuTarget
+    ) {
+      fail(
+        `${context}: ecuTarget "${tune.ecuTarget}" does not match registered target `
+        + `"${registryEntry.ecuTarget}" for this firmware signature.`,
+      );
+    }
   }
 
   const publicPrefix = `tunes/${tune.id}/`;
@@ -219,12 +330,13 @@ async function loadTuneFolder(entry) {
 
 await mkdir(tunesRoot, { recursive: true });
 
+const definitionRegistry = await loadDefinitionRegistry();
 const entries = await readdir(tunesRoot, { withFileTypes: true });
 const tunes = [];
 
 for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
   if (!entry.isDirectory()) continue;
-  const tune = await loadTuneFolder(entry);
+  const tune = await loadTuneFolder(entry, definitionRegistry);
   if (tune) tunes.push(tune);
 }
 
