@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type {
   IniConstantDefinition,
   IniTableDefinition,
@@ -6,10 +6,18 @@ import type {
   ParsedTune,
   TuneConstant,
 } from './model';
+import {
+  findRegisteredDefinition,
+  loadRegisteredDefinition,
+  type DefinitionRegistryEntry,
+} from './definitionRegistry';
 import { parseIni } from './ini';
 import { resolveIniText } from './iniExpression';
 import { parseMsq } from './msq';
 import './styles.css';
+
+type DefinitionSource = 'none' | 'registry' | 'manual';
+type RegistryStatus = 'idle' | 'loading' | 'unknown' | 'ready';
 
 function Detail({ label, value }: { label: string; value: string | number | null }) {
   return (
@@ -63,7 +71,7 @@ function TablePreview({
   const z = tuneMap.get(table.zBins);
 
   if (!x || !y || !z) {
-    return <p className="table-note">This table is defined by the INI but is incomplete in the loaded MSQ.</p>;
+    return <p className="table-note">This table is defined but incomplete in the loaded MSQ.</p>;
   }
 
   const xValues = parseNumbers(x.value);
@@ -127,7 +135,7 @@ function TablePreview({
         </table>
       </div>
       <p className="table-note">
-        X axis follows INI order; Y is displayed high-to-low like a conventional tuning table.
+        X axis follows definition order; Y is displayed high-to-low like a conventional tuning table.
       </p>
     </>
   );
@@ -135,13 +143,17 @@ function TablePreview({
 
 export default function App() {
   const [tuneFileName, setTuneFileName] = useState('');
-  const [iniFileName, setIniFileName] = useState('');
+  const [definitionName, setDefinitionName] = useState('');
+  const [definitionSource, setDefinitionSource] = useState<DefinitionSource>('none');
+  const [registryEntry, setRegistryEntry] = useState<DefinitionRegistryEntry | null>(null);
+  const [registryStatus, setRegistryStatus] = useState<RegistryStatus>('idle');
   const [tune, setTune] = useState<ParsedTune | null>(null);
   const [ini, setIni] = useState<ParsedIni | null>(null);
   const [tuneError, setTuneError] = useState('');
   const [iniError, setIniError] = useState('');
   const [filter, setFilter] = useState('');
   const [selectedTableId, setSelectedTableId] = useState('');
+  const tuneLoadId = useRef(0);
 
   const tuneMap = useMemo(
     () => new Map((tune?.constants ?? []).map((constant) => [constant.name, constant])),
@@ -178,14 +190,63 @@ export default function App() {
     ?? recognizedTables.find((table) => table.zBins === 'veTable')
     ?? recognizedTables[0];
 
-  async function loadTune(file: File | undefined) {
-    if (!file) return;
-    setTuneError('');
-    setTune(null);
-    setTuneFileName(file.name);
+  async function resolveRegisteredDefinition(parsedTune: ParsedTune, loadId: number) {
+    setRegistryStatus('loading');
 
     try {
-      setTune(parseMsq(await file.text()));
+      const entry = await findRegisteredDefinition(parsedTune.details.signature);
+      if (loadId !== tuneLoadId.current) return;
+
+      if (!entry) {
+        setRegistryEntry(null);
+        setRegistryStatus('unknown');
+        return;
+      }
+
+      setRegistryEntry(entry);
+      const registeredIni = await loadRegisteredDefinition(entry);
+      if (loadId !== tuneLoadId.current) return;
+
+      if (registeredIni.signature !== parsedTune.details.signature) {
+        throw new Error('Automatically loaded definition does not match the MSQ signature.');
+      }
+
+      setIni(registeredIni);
+      setDefinitionName(entry.label);
+      setDefinitionSource('registry');
+      setRegistryStatus('ready');
+    } catch (caught) {
+      if (loadId !== tuneLoadId.current) return;
+      setRegistryStatus('unknown');
+      setIniError(
+        caught instanceof Error
+          ? `Automatic definition loading failed: ${caught.message}`
+          : 'Automatic definition loading failed.',
+      );
+    }
+  }
+
+  async function loadTune(file: File | undefined) {
+    if (!file) return;
+    const loadId = ++tuneLoadId.current;
+
+    setTuneError('');
+    setIniError('');
+    setTune(null);
+    setIni(null);
+    setTuneFileName(file.name);
+    setDefinitionName('');
+    setDefinitionSource('none');
+    setRegistryEntry(null);
+    setRegistryStatus('idle');
+    setSelectedTableId('');
+
+    try {
+      const parsedTune = parseMsq(await file.text());
+      if (loadId !== tuneLoadId.current) return;
+
+      setTune(parsedTune);
+      void resolveRegisteredDefinition(parsedTune, loadId);
     } catch (caught) {
       setTuneError(caught instanceof Error ? caught.message : 'Unable to parse this MSQ.');
     }
@@ -193,9 +254,13 @@ export default function App() {
 
   async function loadIni(file: File | undefined) {
     if (!file) return;
+    ++tuneLoadId.current;
     setIniError('');
     setIni(null);
-    setIniFileName(file.name);
+    setDefinitionName(file.name);
+    setDefinitionSource('manual');
+    setRegistryStatus('idle');
+    setRegistryEntry(null);
 
     try {
       setIni(parseIni(await file.text()));
@@ -204,6 +269,30 @@ export default function App() {
     }
   }
 
+  const gateTitle =
+    registryStatus === 'loading'
+      ? 'Loading registered definition'
+      : tune && ini
+        ? signatureMatch
+          ? 'Exact signature match'
+          : 'Signature mismatch'
+        : tune && registryStatus === 'unknown'
+          ? 'No registered definition'
+          : 'Waiting for tune';
+
+  const gateBadge =
+    registryStatus === 'loading'
+      ? 'Checking registry'
+      : signatureMatch
+        ? definitionSource === 'registry'
+          ? 'Auto definition accepted'
+          : 'Manual definition accepted'
+        : tune && ini
+          ? 'Interpretation blocked'
+          : tune && registryStatus === 'unknown'
+            ? 'Manual INI available'
+            : 'Incomplete';
+
   return (
     <main>
       <header className="hero">
@@ -211,8 +300,8 @@ export default function App() {
           <p className="eyebrow">EpicEFI</p>
           <h1>Tune Viewer</h1>
           <p className="lede">
-            Local browser prototype. Load an MSQ and its exact EpicEFI mainController.ini; neither file
-            is uploaded.
+            Open an MSQ locally. Known EpicEFI firmware definitions are resolved automatically by exact
+            signature; manual INI loading remains available for unknown or development builds.
           </p>
         </div>
         <div className="file-actions">
@@ -225,7 +314,7 @@ export default function App() {
             />
           </label>
           <label className="open-button secondary">
-            Open INI
+            Load INI manually
             <input
               type="file"
               accept=".ini,text/plain"
@@ -235,12 +324,12 @@ export default function App() {
         </div>
       </header>
 
-      {!tune && !ini && !tuneError && !iniError && (
+      {!tune && !tuneError && !iniError && (
         <section className="empty-state">
-          <h2>Load a tune and firmware definition</h2>
+          <h2>Open an EpicEFI tune</h2>
           <p>
-            The viewer will only enable INI-driven interpretation when the firmware signatures match
-            exactly.
+            The MSQ firmware signature is checked against the public EpicEFI definition registry. Files
+            opened from your computer are not uploaded.
           </p>
         </section>
       )}
@@ -254,7 +343,7 @@ export default function App() {
 
       {iniError && (
         <section className="error-state">
-          <h2>Could not read {iniFileName || 'INI'}</h2>
+          <h2>Definition error</h2>
           <p>{iniError}</p>
         </section>
       )}
@@ -264,35 +353,47 @@ export default function App() {
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Firmware definition gate</p>
-              <h2>
-                {tune && ini
-                  ? signatureMatch
-                    ? 'Exact signature match'
-                    : 'Signature mismatch'
-                  : 'Waiting for matching pair'}
-              </h2>
+              <h2>{gateTitle}</h2>
             </div>
             <span className={`badge ${signatureMatch ? 'badge-ok' : tune && ini ? 'badge-bad' : ''}`}>
-              {signatureMatch ? 'Definition accepted' : tune && ini ? 'Interpretation blocked' : 'Incomplete'}
+              {gateBadge}
             </span>
           </div>
 
           <div className="details-grid">
             <Detail label="MSQ" value={tuneFileName || 'Not loaded'} />
-            <Detail label="INI" value={iniFileName || 'Not loaded'} />
+            <Detail label="Definition" value={definitionName || 'Not loaded'} />
+            <Detail
+              label="Definition source"
+              value={
+                definitionSource === 'registry'
+                  ? 'EpicEFI public registry'
+                  : definitionSource === 'manual'
+                    ? 'Local manual INI'
+                    : '—'
+              }
+            />
             <Detail
               label="Signature"
               value={tune?.details.signature || ini?.signature || '—'}
             />
             <Detail label="MSQ constants" value={tune?.constants.length ?? null} />
-            <Detail label="INI definitions" value={ini?.constants.length ?? null} />
-            <Detail label="INI tables" value={ini?.tables.length ?? null} />
+            <Detail label="Definition settings" value={ini?.constants.length ?? registryEntry?.definitionCount ?? null} />
+            <Detail label="Definition tables" value={ini?.tables.length ?? registryEntry?.tableCount ?? null} />
           </div>
+
+          {tune && registryStatus === 'unknown' && !ini && (
+            <div className="mismatch">
+              No public definition is registered for <code>{tune.details.signature}</code>. Load the
+              exact matching <code>mainController.ini</code> manually; the viewer will not guess or
+              fall back to another firmware version.
+            </div>
+          )}
 
           {tune && ini && !signatureMatch && (
             <div className="mismatch">
-              The MSQ signature is <code>{tune.details.signature}</code>, while the INI expects{' '}
-              <code>{ini.signature}</code>. INI-driven values and tables are intentionally disabled.
+              The MSQ signature is <code>{tune.details.signature}</code>, while the loaded definition
+              expects <code>{ini.signature}</code>. Interpretation is intentionally disabled.
             </div>
           )}
         </section>
@@ -324,7 +425,7 @@ export default function App() {
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">INI-driven interpretation</p>
+                <p className="eyebrow">Definition-driven interpretation</p>
                 <h2>
                   {tune.constants.filter((constant) => definitionMap.has(constant.name)).length.toLocaleString()}
                   {' '}matched settings
@@ -376,7 +477,7 @@ export default function App() {
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">INI TableEditor</p>
+                <p className="eyebrow">EpicEFI calibration tables</p>
                 <h2>{recognizedTables.length} renderable tables</h2>
               </div>
               <select
@@ -404,14 +505,15 @@ export default function App() {
                 />
               </>
             ) : (
-              <p className="table-note">No complete INI table definitions were found in this MSQ.</p>
+              <p className="table-note">No complete table definitions were found in this MSQ.</p>
             )}
           </section>
         </>
       )}
 
       <footer>
-        V0.1 prototype — exact-signature interpretation only. Opening files locally does not publish them.
+        V0.2 prototype — exact-signature automatic definitions with manual fallback. Local MSQ/INI files
+        are not published.
       </footer>
     </main>
   );

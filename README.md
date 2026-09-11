@@ -8,7 +8,8 @@ This repository is the GitHub-hosted proving ground for a future EpicEFI tune sh
 
 - Open EpicEFI `.msq` files locally in the browser.
 - Read tune metadata and firmware signature.
-- Match a tune to an EpicEFI firmware/INI definition.
+- Automatically resolve registered EpicEFI definitions by exact firmware signature.
+- Fall back to a manually selected exact `mainController.ini` for unknown/development firmware.
 - Render scalar values, selections, curves and tables.
 - Keep local file viewing private: opening a file does not publish it.
 - Support a small repository-backed test tune library.
@@ -55,4 +56,4 @@ HyperTuner Cloud and its INI tooling are being evaluated as open-source referenc
 
 ## Status
 
-**Prototype bootstrap.** No production tune-hosting service exists yet.
+**V0.2 prototype.** Local MSQ viewing now supports exact-signature automatic definition resolution for registered firmware. No production tune-hosting service exists yet.

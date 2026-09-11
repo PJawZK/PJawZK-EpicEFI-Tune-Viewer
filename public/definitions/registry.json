@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "definitions": [
+    {
+      "signature": "rusEFI master.2026.08.26.MEGA144H7.2273317132",
+      "ecuTarget": "MEGA144H7",
+      "label": "MEGA144H7 · 2026-08-26 · 2273317132",
+      "path": "definitions/mega144h7/2026-08-26-2273317132/definition-pack.json.gz",
+      "sha256": "1241594618d25daae24972ccabbc9dd46c237c557f214f12431cfadf299a205f",
+      "definitionCount": 5584,
+      "tableCount": 122,
+      "source": "Validated generated EpicEFI mainController.ini"
+    }
+  ]
+}
