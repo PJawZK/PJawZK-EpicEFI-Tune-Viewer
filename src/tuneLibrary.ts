@@ -4,6 +4,7 @@ const RAW_MAIN_ROOT =
   'https://raw.githubusercontent.com/PJawZK/PJawZK-EpicEFI-Tune-Viewer/main/';
 
 let indexPromise: Promise<PublishedTuneIndex> | null = null;
+const tuneOverrides = new Map<string, PublishedTuneMetadata>();
 
 export function publicAssetUrl(path: string): string {
   return new URL(path.replace(/^\/+/, ''), document.baseURI).toString();
@@ -61,6 +62,24 @@ function publicTuneRecord(record: PublishedTuneMetadata): PublishedTuneMetadata 
   };
 }
 
+function applyTuneOverrides(index: PublishedTuneIndex): PublishedTuneIndex {
+  if (!tuneOverrides.size) return index;
+
+  return {
+    ...index,
+    tunes: index.tunes.map((tune) => tuneOverrides.get(tune.id) ?? tune),
+  };
+}
+
+export function rememberPublishedTune(metadata: PublishedTuneMetadata) {
+  const normalized = publicTuneRecord(metadata);
+  tuneOverrides.set(normalized.id, normalized);
+
+  if (indexPromise) {
+    indexPromise = indexPromise.then(applyTuneOverrides);
+  }
+}
+
 export function invalidateTuneIndex() {
   indexPromise = null;
 }
@@ -96,10 +115,10 @@ export async function loadTuneIndex(): Promise<PublishedTuneIndex> {
         ids.add(tune.id);
       }
 
-      return {
+      return applyTuneOverrides({
         schema: Number(candidate.schema),
         tunes: candidate.tunes as PublishedTuneMetadata[],
-      };
+      });
     });
   }
 
