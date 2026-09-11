@@ -65,9 +65,19 @@ function publicTuneRecord(record: PublishedTuneMetadata): PublishedTuneMetadata 
 function applyTuneOverrides(index: PublishedTuneIndex): PublishedTuneIndex {
   if (!tuneOverrides.size) return index;
 
+  const seen = new Set<string>();
+  const tunes = index.tunes.map((tune) => {
+    seen.add(tune.id);
+    return tuneOverrides.get(tune.id) ?? tune;
+  });
+
+  for (const [id, tune] of tuneOverrides) {
+    if (!seen.has(id)) tunes.push(tune);
+  }
+
   return {
     ...index,
-    tunes: index.tunes.map((tune) => tuneOverrides.get(tune.id) ?? tune),
+    tunes,
   };
 }
 
@@ -157,6 +167,41 @@ async function loadPublishedTuneFromMain(
   }
 
   return publicTuneRecord(raw);
+}
+
+export async function findPublishedChildren(
+  parentTuneId: string,
+): Promise<PublishedTuneMetadata[]> {
+  const index = await loadTuneIndex();
+  return index.tunes
+    .filter((tune) => tune.parentTuneId === parentTuneId)
+    .sort((left, right) => {
+      const leftTime = new Date(left.publishedAt).getTime();
+      const rightTime = new Date(right.publishedAt).getTime();
+      return leftTime - rightTime;
+    });
+}
+
+export async function loadTuneAncestors(
+  tune: PublishedTuneMetadata,
+): Promise<PublishedTuneMetadata[]> {
+  const ancestors: PublishedTuneMetadata[] = [];
+  const seen = new Set<string>([tune.id]);
+  let parentId = tune.parentTuneId;
+
+  while (parentId) {
+    if (seen.has(parentId)) {
+      throw new Error(`Circular lineage detected at "${parentId}".`);
+    }
+
+    seen.add(parentId);
+    const parent = await findPublishedTune(parentId);
+    if (!parent) break;
+    ancestors.unshift(parent);
+    parentId = parent.parentTuneId;
+  }
+
+  return ancestors;
 }
 
 export async function findPublishedTune(id: string): Promise<PublishedTuneMetadata | null> {
