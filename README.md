@@ -140,6 +140,25 @@ Author pages provide:
 
 These are catalog views derived from tune metadata, not authenticated user-account profiles.
 
+## Tune Hub discovery
+
+V0.10 expands the public Tune Hub from a basic searchable list into a metadata-driven discovery view.
+
+The Hub now provides:
+
+- All / Base Maps / Community tune scope
+- ECU-target filtering
+- vehicle-make filtering
+- engine filtering
+- author filtering
+- validation, classification and aspiration filters
+- catalog summary counts
+- one-click filter reset
+- visually distinct EpicEFI Base Map cards
+- lightweight lineage cues retained from V0.9
+
+Published tune info pages also show related tunes ranked from explicit metadata such as engine, vehicle, ECU target, aspiration, fuel, tags and lineage. The UI exposes the matching reasons and does not treat similarity as a compatibility or safety claim.
+
 ## Deliberately deferred
 
 - ECU write/control
@@ -173,7 +192,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.9.2 prototype.** Tune lineage is now presented as a chronological revision history with Root/Current/Latest markers, previous/next navigation, branch handling, publication-vs-edit dates and clearer revision identity defaults. Tune Hub cards expose lightweight lineage cues, while metadata-driven author pages and the V0.8 compare/direct-publish workflows remain in place.
+**V0.10 prototype.** Tune Hub now provides richer metadata facets, Base Map / Community scope, catalog summaries, distinct Base Map presentation and transparent related-tune discovery with visible matching reasons. V0.9 lineage/history/author pages and the V0.8 compare/direct-publish workflows remain in place.
 
 
 ## Multi-firmware definition pipeline
