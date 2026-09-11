@@ -3,6 +3,7 @@ import {
   loadDefinitionRegistry,
   type DefinitionRegistryEntry,
 } from './definitionRegistry';
+import SelectMenu from './SelectMenu';
 
 type DefinitionHubProps = {
   navigate: (path: string) => void;
@@ -93,15 +94,16 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
             aria-label="Search firmware definitions"
           />
 
-          <select
+          <SelectMenu
             className="search"
             value={target}
-            onChange={(event) => setTarget(event.target.value)}
-            aria-label="Filter ECU target"
-          >
-            <option>All</option>
-            {targets.map((option) => <option key={option}>{option}</option>)}
-          </select>
+            onChange={setTarget}
+            ariaLabel="Filter ECU target"
+            options={[
+              { value: 'All' },
+              ...targets.map((option) => ({ value: option })),
+            ]}
+          />
         </div>
 
         <div className="definition-summary">

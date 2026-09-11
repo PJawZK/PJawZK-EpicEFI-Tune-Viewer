@@ -84,11 +84,11 @@ The builder:
 - checks the proposed tune ID against the current public catalog
 - creates a corrected repository-ready ZIP from the original browser File objects
 - omits duplicate INIs when the exact firmware definition is already registered
-- can submit the validated tune directly to GitHub and open a pull request
+- can publish the validated tune directly into `main` for trusted repository writers
 
 For direct submission, the browser uses a GitHub access token held only in page memory. The token is never stored in browser storage or written into tune metadata, ZIPs, commits or logs.
 
-Trusted repository writers now publish the tune folder directly to `main` in one atomic commit. No temporary branch, fork or pull request is created. The main reference update is non-forced, so if `main` changes during the upload the publication fails safely instead of overwriting concurrent work.
+Trusted repository writers publish the tune folder directly to `main` with no temporary branch, fork or pull request. The browser uses GitHub's Contents API: tune assets are staged with CI-skipping commits and `metadata.json` is written last to trigger the authoritative catalog/build validation.
 
 Users without write permission cannot use direct-main publishing and can use the ZIP fallback instead.
 
@@ -127,7 +127,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.8.2 prototype.** Trusted repository writers can now publish a validated tune directly to `main` in one atomic non-forced commit, without a temporary branch or pull request. ZIP fallback remains available. CI still independently verifies MSQ/INI/metadata firmware signatures after publication. V0.8 Tune Compare remains available at `#/compare`.
+**V0.8.4 prototype.** Submit Tune now uses custom browser dropdowns throughout the app, provides a controlled supported-ECU target list, and publishes trusted-writer uploads through GitHub's Contents API for fine-grained-PAT compatibility. No runtime branch, fork or pull request is created. ZIP fallback remains available, and CI independently verifies MSQ/INI/metadata firmware signatures after publication.
 
 
 ## Multi-firmware definition pipeline

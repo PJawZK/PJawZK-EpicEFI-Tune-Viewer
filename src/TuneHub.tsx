@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublishedTuneMetadata } from './model';
 import { loadTuneIndex } from './tuneLibrary';
+import SelectMenu from './SelectMenu';
 
 type TuneHubProps = {
   navigate: (path: string) => void;
@@ -220,36 +221,60 @@ export default function TuneHub({ navigate }: TuneHubProps) {
             placeholder="Search vehicle, engine, author, firmware, tags…"
             aria-label="Search published tunes"
           />
-          <select className="search" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)}>
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="title">Title A–Z</option>
-          </select>
+          <SelectMenu
+            className="search"
+            value={sort}
+            onChange={(value) => setSort(value as typeof sort)}
+            ariaLabel="Sort tunes"
+            options={[
+              { value: 'newest', label: 'Newest first' },
+              { value: 'oldest', label: 'Oldest first' },
+              { value: 'title', label: 'Title A–Z' },
+            ]}
+          />
         </div>
 
         <div className="hub-filter-row">
           <div className="hub-filter-control">
             <label htmlFor="hub-validation">Validation</label>
-            <select id="hub-validation" value={validation} onChange={(event) => setValidation(event.target.value)}>
-              <option>All</option>
-              {validationOptions.map((option) => <option key={option}>{option}</option>)}
-            </select>
+            <SelectMenu
+              id="hub-validation"
+              value={validation}
+              onChange={setValidation}
+              ariaLabel="Validation"
+              options={[
+                { value: 'All' },
+                ...validationOptions.map((option) => ({ value: option })),
+              ]}
+            />
           </div>
 
           <div className="hub-filter-control">
             <label htmlFor="hub-classification">Classification</label>
-            <select id="hub-classification" value={classification} onChange={(event) => setClassification(event.target.value)}>
-              <option>All</option>
-              {classificationOptions.map((option) => <option key={option}>{option}</option>)}
-            </select>
+            <SelectMenu
+              id="hub-classification"
+              value={classification}
+              onChange={setClassification}
+              ariaLabel="Classification"
+              options={[
+                { value: 'All' },
+                ...classificationOptions.map((option) => ({ value: option })),
+              ]}
+            />
           </div>
 
           <div className="hub-filter-control">
             <label htmlFor="hub-aspiration">Aspiration</label>
-            <select id="hub-aspiration" value={aspiration} onChange={(event) => setAspiration(event.target.value)}>
-              <option>All</option>
-              {aspirationOptions.map((option) => <option key={option}>{option}</option>)}
-            </select>
+            <SelectMenu
+              id="hub-aspiration"
+              value={aspiration}
+              onChange={setAspiration}
+              ariaLabel="Aspiration"
+              options={[
+                { value: 'All' },
+                ...aspirationOptions.map((option) => ({ value: option })),
+              ]}
+            />
           </div>
 
           <div className="hub-count">

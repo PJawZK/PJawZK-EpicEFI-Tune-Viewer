@@ -1,6 +1,10 @@
 import JSZip from 'jszip';
 import { useEffect, useMemo, useState } from 'react';
-import { findRegisteredDefinition, type DefinitionRegistryEntry } from './definitionRegistry';
+import {
+  findRegisteredDefinition,
+  loadDefinitionRegistry,
+  type DefinitionRegistryEntry,
+} from './definitionRegistry';
 import { parseIni } from './ini';
 import {
   tuneClassifications,
@@ -18,6 +22,8 @@ import {
   type GitHubSubmissionProgress,
   type GitHubSubmissionResult,
 } from './githubSubmission';
+import SelectMenu from './SelectMenu';
+import { mergeEcuTargets } from './ecuTargets';
 
 type SubmitTuneProps = {
   navigate: (path: string) => void;
@@ -110,8 +116,7 @@ function githubProgressLabel(
     authenticating: 'Authenticating with GitHub',
     'checking-main': 'Checking main and tune ID',
     'uploading-files': 'Uploading tune files',
-    'creating-commit': 'Creating tune commit',
-    'publishing-main': 'Publishing commit to main',
+    'publishing-main': 'Publishing tune metadata to main',
   };
 
   return progress ? `${labels[progress]}${detail ? ` · ${detail}` : ''}` : '';
@@ -279,6 +284,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
   const [registryEntry, setRegistryEntry] = useState<DefinitionRegistryEntry | null>(null);
   const [registryStatus, setRegistryStatus] = useState<'idle' | 'checking' | 'found' | 'missing'>('idle');
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [registryTargets, setRegistryTargets] = useState<string[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [packaging, setPackaging] = useState(false);
   const [packageError, setPackageError] = useState('');
@@ -303,6 +309,21 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         setCatalogError(
           caught instanceof Error ? caught.message : 'Unable to check existing tune IDs.',
         );
+      });
+
+    loadDefinitionRegistry()
+      .then((registry) => {
+        if (!active) return;
+        setRegistryTargets([
+          ...new Set(
+            registry.definitions
+              .map((entry) => entry.ecuTarget?.trim())
+              .filter((value): value is string => Boolean(value)),
+          ),
+        ]);
+      })
+      .catch(() => {
+        // The built-in supported target list remains available if the registry is unreachable.
       });
 
     return () => {
@@ -330,6 +351,15 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
     const newest = new Date().getFullYear() + 1;
     return Array.from({ length: newest - 1899 }, (_, index) => String(newest - index));
   }, []);
+
+  const ecuTargetOptions = useMemo(
+    () => mergeEcuTargets(
+      form.ecuTarget,
+      inferEcuTarget(tune?.details.signature ?? ''),
+      ...registryTargets,
+    ),
+    [form.ecuTarget, registryTargets, tune],
+  );
 
   const selectableFuelOptions = useMemo(() => {
     const options = [...fuelOptions] as string[];
@@ -842,41 +872,43 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             value={form.author}
             onChange={(value) => update('author', value)}
           />
-          <TextField
-            label="ECU target"
-            required
-            value={form.ecuTarget}
-            onChange={(value) => update('ecuTarget', value)}
-            placeholder="MEGA144H7"
-          />
+          <div className="submit-field">
+            <label>ECU target <em>required</em></label>
+            <SelectMenu
+              value={form.ecuTarget}
+              onChange={(value) => update('ecuTarget', value)}
+              placeholder="Select supported ECU…"
+              ariaLabel="ECU target"
+              options={ecuTargetOptions}
+            />
+            <small>Supported EpicEFI targets are listed, registered definition targets are merged in automatically, and the exact target detected from the loaded MSQ is added if needed.</small>
+          </div>
 
           <div className="submit-field">
             <label htmlFor="submit-validation">Validation badge <em>required</em></label>
-            <select
+            <SelectMenu
               id="submit-validation"
               value={form.validationStatus}
-              onChange={(event) => update('validationStatus', event.target.value as FormState['validationStatus'])}
-            >
-              <option value="">Select validation…</option>
-              {validationStatuses
+              onChange={(value) => update('validationStatus', value as FormState['validationStatus'])}
+              placeholder="Select validation…"
+              ariaLabel="Validation badge"
+              options={validationStatuses
                 .filter((status) => status !== 'EpicEFI Verified')
-                .map((status) => <option key={status}>{status}</option>)}
-            </select>
+                .map((status) => ({ value: status }))}
+            />
             <small>EpicEFI Verified cannot be self-assigned.</small>
           </div>
 
           <div className="submit-field">
             <label htmlFor="submit-classification">Classification <em>required</em></label>
-            <select
+            <SelectMenu
               id="submit-classification"
               value={form.classification}
-              onChange={(event) => update('classification', event.target.value as FormState['classification'])}
-            >
-              <option value="">Select classification…</option>
-              {tuneClassifications.map((classification) => (
-                <option key={classification}>{classification}</option>
-              ))}
-            </select>
+              onChange={(value) => update('classification', value as FormState['classification'])}
+              placeholder="Select classification…"
+              ariaLabel="Tune classification"
+              options={tuneClassifications.map((classification) => ({ value: classification }))}
+            />
           </div>
         </div>
 
@@ -904,16 +936,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <TextField label="Vehicle model" value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
           <div className="submit-field">
             <label htmlFor="submit-model-year">Model year</label>
-            <select
+            <SelectMenu
               id="submit-model-year"
               value={form.vehicleYear}
-              onChange={(event) => update('vehicleYear', event.target.value)}
-            >
-              <option value="">Not specified</option>
-              {modelYearOptions.map((year) => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+              onChange={(value) => update('vehicleYear', value)}
+              placeholder="Not specified"
+              ariaLabel="Model year"
+              options={modelYearOptions.map((year) => ({ value: year }))}
+            />
           </div>
           <TextField label="Trim / variant" value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
 
@@ -924,16 +954,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
           <div className="submit-field">
             <label htmlFor="submit-aspiration">Aspiration</label>
-            <select
+            <SelectMenu
               id="submit-aspiration"
               value={form.aspiration}
-              onChange={(event) => update('aspiration', event.target.value)}
-            >
-              <option value="">Select aspiration…</option>
-              {aspirationOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+              onChange={(value) => update('aspiration', value)}
+              placeholder="Select aspiration…"
+              ariaLabel="Aspiration"
+              options={aspirationOptions.map((option) => ({ value: option }))}
+            />
             {form.aspiration === 'Forced induction (unspecified)' && (
               <small>EpicEFI reports forced induction but does not distinguish turbo from supercharger here.</small>
             )}
@@ -941,16 +969,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <TextField label="Compression ratio" type="number" step="0.01" value={form.compressionRatio} onChange={(value) => update('compressionRatio', value)} />
           <div className="submit-field">
             <label htmlFor="submit-fuel">Fuel</label>
-            <select
+            <SelectMenu
               id="submit-fuel"
               value={form.fuel}
-              onChange={(event) => update('fuel', event.target.value)}
-            >
-              <option value="">Select fuel…</option>
-              {selectableFuelOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+              onChange={(value) => update('fuel', value)}
+              placeholder="Select fuel…"
+              ariaLabel="Fuel"
+              options={selectableFuelOptions.map((option) => ({ value: option }))}
+            />
             {form.fuel.startsWith('Flex fuel (fallback ') && (
               <small>Auto-detected from the tune's flex-fuel state and configured fallback ethanol content.</small>
             )}
@@ -958,16 +984,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
           <div className="submit-field">
             <label htmlFor="submit-ignition">Ignition</label>
-            <select
+            <SelectMenu
               id="submit-ignition"
               value={form.ignition}
-              onChange={(event) => update('ignition', event.target.value)}
-            >
-              <option value="">Select ignition mode…</option>
-              {selectableIgnitionOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+              onChange={(value) => update('ignition', value)}
+              placeholder="Select ignition mode…"
+              ariaLabel="Ignition"
+              options={selectableIgnitionOptions.map((option) => ({ value: option }))}
+            />
             <small>
               {ini
                 ? 'Options are taken from this firmware definition.'
@@ -1093,8 +1117,8 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             <small>
               Use a fine-grained personal access token with resource owner <strong>PJawZK</strong>,
               repository access limited to <strong>PJawZK-EpicEFI-Tune-Viewer</strong>, and
-              <strong>Contents: Read and write</strong>. Metadata read access is supplied by GitHub.
-              The token is held only in page memory and is not stored in the tune, ZIP, commit, or browser storage.
+              <strong>Contents: Read and write</strong>. Uploads now use GitHub's Contents API rather than
+              the Git Data blob API for fine-grained-token compatibility. The token is held only in page memory.
             </small>
           </label>
 
@@ -1169,11 +1193,10 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         </div>
 
         <p className="table-note">
-          Direct upload writes one atomic commit to <code>main</code> containing only
-          <code>metadata.json</code>, <code>tune.msq</code>, and the matching
-          <code>mainController.ini</code> when the firmware is not already registered. The main ref
-          is never force-updated, so a concurrent repository change causes the upload to fail safely.
-          The ZIP option remains available for manual/offline submission.
+          Direct upload writes the tune files straight into <code>main</code> under
+          <code>public/tunes/&lt;tune-id&gt;/</code>. File staging commits are marked to skip CI;
+          <code>metadata.json</code> is written last and triggers the normal catalog/build validation.
+          No branch, fork, or pull request is created.
         </p>
       </section>
 

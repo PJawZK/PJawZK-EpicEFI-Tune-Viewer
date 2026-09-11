@@ -15,6 +15,7 @@ import { parseIni } from './ini';
 import { resolveIniText } from './iniExpression';
 import { parseMsq } from './msq';
 import TuneBrowser from './TuneBrowser';
+import SelectMenu from './SelectMenu';
 import './styles.css';
 
 type DefinitionSource = 'none' | 'registry' | 'manual';
@@ -496,18 +497,16 @@ export default function LocalTuneViewer() {
                 <p className="eyebrow">Diagnostics / flat calibration table index</p>
                 <h2>{recognizedTables.length} renderable tables</h2>
               </div>
-              <select
+              <SelectMenu
                 className="search"
                 value={selectedTable?.id ?? ''}
-                onChange={(event) => setSelectedTableId(event.target.value)}
-                aria-label="Select calibration table"
-              >
-                {recognizedTables.map((table) => (
-                  <option key={table.id} value={table.id}>
-                    {table.title}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedTableId}
+                ariaLabel="Select calibration table"
+                options={recognizedTables.map((table) => ({
+                  value: table.id,
+                  label: table.title,
+                }))}
+              />
             </div>
 
             {selectedTable ? (

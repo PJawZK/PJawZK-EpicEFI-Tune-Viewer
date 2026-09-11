@@ -11,10 +11,10 @@ Local files opened in the viewer remain private unless the user explicitly publi
 3. Load the EpicEFI MSQ.
 4. Supply its exact matching `mainController.ini` only when that firmware signature is not already registered.
 5. Complete the required public metadata and badge selections.
-6. Enter a GitHub access token for an account with write permission to this repository.
+6. Enter a GitHub fine-grained personal access token for an account with write permission to this repository.
 7. Choose **Upload to main**.
 
-The browser then creates one Git commit containing:
+The browser publishes:
 
 ```text
 public/tunes/
@@ -26,15 +26,25 @@ public/tunes/
 
 No temporary branch, fork or pull request is created.
 
-The update to `refs/heads/main` uses `force: false`. If `main` advances while the upload is in progress, GitHub rejects the stale update instead of overwriting other work.
+The uploader uses GitHub's Contents API because that endpoint explicitly supports fine-grained personal access tokens with **Contents: write** repository permission.
 
-The browser also checks the live `main` tree immediately before publishing and rejects an already-existing `public/tunes/<tune-id>/` folder.
+Tune assets are written first with CI-skipping staging commits. `metadata.json` is written last and triggers the normal catalog/build validation. If staging fails, the browser attempts to remove any staging files it already created.
+
+The browser checks the live `main` tree immediately before publishing and rejects an already-existing `public/tunes/<tune-id>/` folder.
 
 ## Access requirements
 
 Direct-main publishing is intentionally limited to trusted repository writers.
 
-A token without write permission to `PJawZK/PJawZK-EpicEFI-Tune-Viewer` cannot publish directly. Those users should use the ZIP fallback.
+For a fine-grained token:
+
+- Resource owner: `PJawZK`
+- Repository access: only `PJawZK-EpicEFI-Tune-Viewer`
+- Repository permissions: **Contents → Read and write**
+
+Metadata read access is supplied by GitHub.
+
+A token without effective write access to this repository cannot publish directly. Those users should use the ZIP fallback.
 
 The token is held only in page memory and is not stored in localStorage/sessionStorage, metadata, ZIP files, commits or application logs.
 
@@ -70,7 +80,7 @@ CI independently verifies:
 - validation/classification values
 - `parentTuneId` references an existing tune
 
-Because direct-main publishing validates after the commit lands, a bad direct commit can remain in repository history even though the build/Pages deployment fails. Browser validation and repository CI are therefore both retained.
+Because direct-main publishing validates after the final metadata commit lands, a bad direct submission can remain in repository history even though the build/Pages deployment fails. Browser validation and repository CI are therefore both retained.
 
 ## Publication rules
 
