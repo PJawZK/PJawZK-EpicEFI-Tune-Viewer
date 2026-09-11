@@ -4,6 +4,15 @@ const RESERVED_TUNE_IDS = new Set([
   'readme.md',
   'base_map_import_notes.md',
 ]);
+const PUBLIC_VALIDATION_STATUSES = new Set([
+  'Unverified',
+  'Starts/Idles',
+  'Driven',
+  'Road Tested',
+  'Performance Tested',
+  'Track Tested',
+  'Dyno Tested',
+]);
 const CLASSIFICATIONS = new Set([
   'Normal',
   'Experimental',
@@ -143,6 +152,14 @@ export function normalizePublicMetadata(raw, { hasIni, publishedAt }) {
     fail('metadata.json parentTuneId cannot reference the tune itself.');
   }
 
+  if (source.validationStatus === 'EpicEFI Verified') {
+    fail('EpicEFI Verified is reserved and cannot be assigned by public submission.');
+  }
+  if (!PUBLIC_VALIDATION_STATUSES.has(source.validationStatus)) {
+    fail(
+      `metadata.json validationStatus "${String(source.validationStatus)}" is not supported for public submission.`,
+    );
+  }
   if (!CLASSIFICATIONS.has(source.classification)) {
     fail(`metadata.json classification "${String(source.classification)}" is not supported.`);
   }
@@ -187,7 +204,7 @@ export function normalizePublicMetadata(raw, { hasIni, publishedAt }) {
       'metadata.json firmwareSignature',
       240,
     ),
-    validationStatus: 'Unverified',
+    validationStatus: source.validationStatus,
     classification: source.classification,
     ...(vehicle ? { vehicle } : {}),
     ...(engine ? { engine } : {}),
