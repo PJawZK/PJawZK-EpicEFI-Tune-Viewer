@@ -16,6 +16,9 @@ jobs:
         with:
           ref: import-epicefi-base-maps-20260911
 
+      - name: Install remote ZIP reader
+        run: python3 -m pip install --disable-pip-version-check remotezip requests
+
       - name: Import base-map profiles
         shell: bash
         run: |
@@ -23,8 +26,11 @@ jobs:
           python3 - <<'PY'
           import json, re, shutil, urllib.parse, urllib.request
           from pathlib import Path
+          import requests
+          from remotezip import RemoteZip
 
           BASE = 'https://content.epicefi.com/base_maps/'
+          FW_BASE = 'https://content.epicefi.com/firmware/'
           ROOT = Path('public/tunes')
 
           profiles = [
@@ -294,6 +300,17 @@ jobs:
                   raise RuntimeError(f"No firmware signature in {msq_name}")
               signature = match.group(1).decode('latin-1').strip()
 
+              base_ini_data = ini_path.read_bytes()
+              base_ini_signature = ini_signature(base_ini_data)
+              resolved_note = ''
+              if base_ini_signature != signature:
+                  exact_data, bundle, internal_name = matching_firmware_ini(signature)
+                  ini_path.write_bytes(exact_data)
+                  resolved_note = (
+                      f' The base-map site INI had signature {base_ini_signature or "unknown"}; '
+                      f'the exact matching definition was resolved from firmware/{bundle} ({internal_name}).'
+                  )
+
               metadata = {k: v for k, v in profile.items() if k != 'stem'}
               metadata.update({
                   'firmwareSignature': signature,
@@ -304,6 +321,8 @@ jobs:
               })
               if 'notes' not in metadata:
                   metadata['notes'] = f"Imported from the EpicEFI base-map library. Original label: {profile['stem']}."
+              if resolved_note:
+                  metadata['notes'] = metadata['notes'] + resolved_note
               (folder / 'metadata.json').write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
               imported.append((profile['id'], profile['stem'], signature))
 
