@@ -7,6 +7,7 @@ import DefinitionHub from './DefinitionHub';
 import SubmitDefinition from './SubmitDefinition';
 import TuneCompare from './TuneCompare';
 import AuthorPage from './AuthorPage';
+import CollectionPage, { type CollectionView } from './CollectionPage';
 
 type Route =
   | { kind: 'hub' }
@@ -15,6 +16,7 @@ type Route =
   | { kind: 'edit'; id: string }
   | { kind: 'revision'; id: string }
   | { kind: 'author'; author: string }
+  | { kind: 'collection'; view: CollectionView }
   | { kind: 'definitions' }
   | { kind: 'submitDefinition' }
   | { kind: 'compare' }
@@ -39,6 +41,64 @@ function parseRoute(): Route {
     return { kind: 'submitDefinition' };
   }
   if (parts[0] === 'definitions') return { kind: 'definitions' };
+
+  if (parts[0] === 'browse') {
+    const decode = (value: string | undefined): string => {
+      if (!value) return '';
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    };
+
+    if (parts.length === 1) {
+      return { kind: 'collection', view: { kind: 'overview' } };
+    }
+    if (parts[1] === 'base-maps') {
+      return { kind: 'collection', view: { kind: 'baseMaps' } };
+    }
+    if (parts[1] === 'vehicles') {
+      return { kind: 'collection', view: { kind: 'vehicles' } };
+    }
+    if (parts[1] === 'vehicle' && parts[2]) {
+      return {
+        kind: 'collection',
+        view: {
+          kind: 'vehicle',
+          make: decode(parts[2]),
+          ...(parts[3] ? { model: decode(parts[3]) } : {}),
+        },
+      };
+    }
+    if (parts[1] === 'engines') {
+      return { kind: 'collection', view: { kind: 'engines' } };
+    }
+    if (parts[1] === 'engine' && parts[2] && parts[3]) {
+      return {
+        kind: 'collection',
+        view: {
+          kind: 'engine',
+          make: decode(parts[2]) === '~' ? '' : decode(parts[2]),
+          code: decode(parts[3]) === '~' ? '' : decode(parts[3]),
+        },
+      };
+    }
+    if (parts[1] === 'ecus') {
+      return { kind: 'collection', view: { kind: 'ecus' } };
+    }
+    if (parts[1] === 'ecu' && parts[2]) {
+      return {
+        kind: 'collection',
+        view: { kind: 'ecu', target: decode(parts[2]) },
+      };
+    }
+    if (parts[1] === 'authors') {
+      return { kind: 'collection', view: { kind: 'authors' } };
+    }
+
+    return { kind: 'collection', view: { kind: 'overview' } };
+  }
 
   if (parts[0] === 'author' && parts[1]) {
     let author = parts[1];
@@ -129,7 +189,13 @@ export default function App() {
         <div className="site-nav-links">
           <button
             type="button"
-            className={route.kind === 'hub' || route.kind === 'author' ? 'active' : ''}
+            className={
+              route.kind === 'hub'
+              || route.kind === 'author'
+              || route.kind === 'collection'
+                ? 'active'
+                : ''
+            }
             onClick={() => navigate('/')}
           >
             Tune Hub
@@ -176,6 +242,7 @@ export default function App() {
       </nav>
 
       {route.kind === 'hub' && <TuneHub navigate={navigate} />}
+      {route.kind === 'collection' && <CollectionPage view={route.view} navigate={navigate} />}
       {route.kind === 'author' && <AuthorPage author={route.author} navigate={navigate} />}
       {route.kind === 'local' && <LocalTuneViewer />}
       {route.kind === 'compare' && <TuneCompare navigate={navigate} />}
