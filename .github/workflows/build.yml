@@ -1,0 +1,24 @@
+name: Build
+
+on:
+  push:
+    branches: ["main", "v0.1-browser-viewer"]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install
+        run: npm install
+
+      - name: Build
+        run: npm run build
