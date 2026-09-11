@@ -7,9 +7,10 @@ GITHUB_OWNER = "PJawZK"
 GITHUB_REPO = "PJawZK-EpicEFI-Tune-Viewer"
 GITHUB_BRANCH = "main"
 TURNSTILE_EXPECTED_ACTION = "submit_tune"
-# Set PUBLIC_SITE_ORIGIN to the exact deployed Tune Viewer origin.
+# Set these two to the deployed Tune Viewer origin/hostname.
 # Example:
 # PUBLIC_SITE_ORIGIN = "https://pjawzk.github.io"
+# TURNSTILE_EXPECTED_HOSTNAME = "pjawzk.github.io"
 
 # Store these with `wrangler secret put`, never in this file:
 # GITHUB_APP_ID
@@ -17,5 +18,3 @@ TURNSTILE_EXPECTED_ACTION = "submit_tune"
 # GITHUB_PRIVATE_KEY
 # TURNSTILE_SECRET_KEY
 #
-# Optional:
-# TURNSTILE_EXPECTED_HOSTNAME
