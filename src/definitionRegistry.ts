@@ -17,6 +17,9 @@ export type DefinitionRegistryEntry = {
   sha256: string;
   definitionCount: number;
   tableCount: number;
+  menuCount?: number;
+  dialogCount?: number;
+  curveCount?: number;
   source: string;
 };
 

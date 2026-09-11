@@ -118,4 +118,13 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.5 prototype.** The repository now includes the Tune Hub, local viewer, permanent published-tune routes, automatic catalog validation/index generation, and a browser-local submission builder that produces repository-ready tune packages without uploading local files automatically.
+**V0.6 prototype.** The Tune Hub, local viewer, published-tune routes and submission builder remain in place. Firmware definitions are now source-driven: CI can parse any EpicEFI `mainController.ini`, generate compact SHA-256-verified viewer packs, reject duplicate signatures, and rebuild the public multi-firmware registry without React source changes.
+
+
+## Multi-firmware definition pipeline
+
+Registered firmware definitions are generated from source INIs under `definitions/sources/<definition-id>/`.
+
+The normal build runs `npm run definitions` before the tune catalog and web build. It uses the same `src/ini.ts` parser as the browser, then generates compact gzip definition packs and `public/definitions/registry.json`.
+
+This is an automatic convenience layer only. Unknown/development firmware can still be opened or submitted with its exact matching local `mainController.ini`.
