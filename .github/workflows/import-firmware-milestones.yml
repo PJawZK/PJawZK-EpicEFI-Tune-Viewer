@@ -1,0 +1,236 @@
+name: Import curated firmware milestones
+
+on:
+  push:
+    branches:
+      - firmware-milestone-definitions-20260911
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: firmware-milestone-definitions-20260911
+          fetch-depth: 0
+
+      - name: Install remote ZIP reader
+        run: python3 -m pip install --disable-pip-version-check remotezip requests
+
+      - name: Import milestone INIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, re, shutil, time
+          from concurrent.futures import ThreadPoolExecutor, as_completed
+          from pathlib import Path, PurePosixPath
+
+          import requests
+          from remotezip import RemoteZip
+
+          BASE = 'https://content.epicefi.com/firmware/'
+          RELEASES = [
+              '2025-12-02',
+              '2026-03-30',
+              '2026-07-31',
+              '2026-08-10',
+              '2026-08-26',
+              '2026-09-11',
+          ]
+          WORKERS = 24
+          ROOT = Path('definitions/sources/releases')
+          signature_re = re.compile(
+              r'^\s*signature\s*=\s*["\']([^"\']+)["\']',
+              re.IGNORECASE | re.MULTILINE,
+          )
+
+          response = requests.get(BASE + 'list.php', timeout=60)
+          response.raise_for_status()
+          all_paths = [
+              p for p in response.json()
+              if isinstance(p, str) and p.lower().endswith('.zip')
+          ]
+
+          def target_from_bundle(path):
+              name = PurePosixPath(path).name
+              stem = name[:-4]
+              for prefix in ('epicefi_bundle_', 'rusefi_bundle_'):
+                  if stem.startswith(prefix):
+                      return stem[len(prefix):]
+              return stem
+
+          def is_simulator(target):
+              return target.lower().startswith('simulator')
+
+          def is_epictuner_resource(name):
+              low = name.replace('\\', '/').lower().lstrip('/')
+              return low.startswith('epictuner/resources/')
+
+          def candidate_score(info):
+              name = info.filename.replace('\\', '/')
+              low = name.lower()
+              base = PurePosixPath(name).name.lower()
+              in_snapshot = (
+                  low.startswith('epicefi.snapshot.')
+                  or low.startswith('rusefi.snapshot.')
+                  or '/epicefi.snapshot.' in low
+                  or '/rusefi.snapshot.' in low
+                  or '.snapshot.' in low
+              )
+              if in_snapshot and base.startswith('epicefi_'): kind = 0
+              elif in_snapshot and base.startswith('rusefi_'): kind = 1
+              elif in_snapshot: kind = 2
+              elif base.startswith('epicefi_'): kind = 3
+              elif base.startswith('rusefi_'): kind = 4
+              else: kind = 5
+              return (kind, len(name), low)
+
+          def choose_ini(infos):
+              inis = [
+                  i for i in infos
+                  if not i.is_dir()
+                  and PurePosixPath(i.filename).suffix.lower() == '.ini'
+                  and not is_epictuner_resource(i.filename)
+              ]
+              if not inis:
+                  raise RuntimeError('No firmware INI outside epicTuner/Resources')
+              return min(inis, key=candidate_score)
+
+          def read_bundle(path):
+              url = BASE + path
+              last_error = None
+              for attempt in range(1, 4):
+                  try:
+                      with RemoteZip(url, timeout=120) as rz:
+                          chosen = choose_ini(rz.infolist())
+                          data = rz.read(chosen.filename)
+                          text = data.decode('latin-1', errors='replace')
+                          match = signature_re.search(text)
+                          if not match:
+                              raise RuntimeError(f'No firmware signature in {chosen.filename}')
+                          return path, chosen.filename, data, match.group(1).strip()
+                  except Exception as exc:
+                      last_error = exc
+                      time.sleep(attempt)
+              raise RuntimeError(f'{path}: {last_error!r}')
+
+          selected = {}
+          for release in RELEASES:
+              bundles = [
+                  p for p in all_paths
+                  if p.startswith(release + '/')
+                  and not is_simulator(target_from_bundle(p))
+              ]
+              if not bundles:
+                  raise RuntimeError(f'No firmware bundles found for milestone {release}')
+              selected[release] = sorted(bundles)
+
+          if ROOT.exists():
+              shutil.rmtree(ROOT)
+          ROOT.mkdir(parents=True)
+
+          total = sum(len(v) for v in selected.values())
+          print(f'Importing {total} hardware definitions across {len(RELEASES)} milestones')
+
+          for release in RELEASES:
+              bundles = selected[release]
+              print(f'RELEASE {release}: {len(bundles)} hardware targets')
+              results = []
+              failures = []
+
+              with ThreadPoolExecutor(max_workers=WORKERS) as executor:
+                  futures = {executor.submit(read_bundle, p): p for p in bundles}
+                  for future in as_completed(futures):
+                      source = futures[future]
+                      try:
+                          results.append(future.result())
+                      except Exception as exc:
+                          failures.append((source, repr(exc)))
+                          print(f'FAILED {source}: {exc!r}', flush=True)
+
+              if failures:
+                  raise RuntimeError(f'{release}: {len(failures)} download/extraction failures: {failures[:10]}')
+
+              seen_targets = set()
+              for bundle_path, internal_name, data, signature in sorted(results):
+                  target = target_from_bundle(bundle_path)
+                  if target in seen_targets:
+                      raise RuntimeError(f'{release}: duplicate target {target}')
+                  seen_targets.add(target)
+
+                  folder = ROOT / release / target
+                  folder.mkdir(parents=True, exist_ok=True)
+                  (folder / 'mainController.ini').write_bytes(data)
+                  metadata = {
+                      'ecuTarget': target,
+                      'release': release,
+                      'label': f'{target} · {release}',
+                      'source': f'EpicEFI firmware milestone {release} · {PurePosixPath(bundle_path).name}',
+                      'expectedSignature': signature,
+                  }
+                  (folder / 'metadata.json').write_text(
+                      json.dumps(metadata, indent=2, ensure_ascii=False) + '\n',
+                      encoding='utf-8',
+                  )
+
+              print(f'IMPORTED {release}: {len(results)} definitions')
+          PY
+
+      - name: Commit milestone sources by release
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          for release in 2025-12-02 2026-03-30 2026-07-31 2026-08-10 2026-08-26 2026-09-11; do
+            git add "definitions/sources/releases/$release"
+            if ! git diff --cached --quiet; then
+              git commit -m "data: add EpicEFI firmware milestone $release"
+              git push origin HEAD:firmware-milestone-definitions-20260911
+            fi
+          done
+
+      - name: Validate definition registry and production build
+        shell: bash
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          registry = json.loads(Path('public/definitions/registry.json').read_text())
+          entries = registry['definitions']
+          releases = {}
+          for entry in entries:
+              releases.setdefault(entry.get('release', '(none)'), 0)
+              releases[entry.get('release', '(none)')] += 1
+
+          expected = {
+              '2025-12-02': 19,
+              '2026-03-30': 42,
+              '2026-07-31': 46,
+              '2026-08-10': 45,
+              '2026-08-26': 49,
+              '2026-09-11': 49,
+          }
+          if releases != expected:
+              raise SystemExit(f'Unexpected milestone counts: {releases!r}; expected {expected!r}')
+
+          signatures = [entry['signature'] for entry in entries]
+          if len(signatures) != len(set(signatures)):
+              raise SystemExit('Duplicate signatures survived registry generation')
+
+          print('MILESTONE_COUNTS=' + json.dumps(releases, sort_keys=True))
+          print(f'TOTAL_DEFINITIONS={len(entries)}')
+          PY
