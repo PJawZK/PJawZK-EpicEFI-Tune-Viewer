@@ -58,6 +58,36 @@ const aspirationOptions = [
   'Other',
 ] as const;
 
+const fuelOptions = [
+  'Gasoline / Petrol (unspecified)',
+  'E0',
+  'E5',
+  'E10',
+  'E15',
+  'E20',
+  'E30',
+  'E40',
+  'E50',
+  'E60',
+  'E70',
+  'E85',
+  'E100',
+  'Flex fuel',
+  'Methanol',
+  'M85',
+  'LPG',
+  'CNG',
+  'Race gasoline',
+  'Other / Custom',
+] as const;
+
+const fallbackIgnitionOptions = [
+  'Single Coil',
+  'Individual Coils',
+  'Wasted Spark',
+  'Two Distributors',
+] as const;
+
 const initialForm: FormState = {
   id: '',
   title: '',
@@ -256,6 +286,34 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       || (registryStatus === 'found' && registryEntry?.signature === tune.details.signature)
     ),
   );
+
+  const modelYearOptions = useMemo(() => {
+    const newest = new Date().getFullYear() + 1;
+    return Array.from({ length: newest - 1899 }, (_, index) => String(newest - index));
+  }, []);
+
+  const selectableFuelOptions = useMemo(() => {
+    const options = [...fuelOptions] as string[];
+    const current = form.fuel.trim();
+    if (current && !options.includes(current)) options.unshift(current);
+    return options;
+  }, [form.fuel]);
+
+  const selectableIgnitionOptions = useMemo(() => {
+    const fromIni = ini?.constants
+      .find((definition) => definition.name === 'ignitionMode')
+      ?.options
+      .map((option) => option.trim())
+      .filter((option) => option && option.toUpperCase() !== 'INVALID') ?? [];
+
+    const options = fromIni.length
+      ? [...new Set(fromIni)]
+      : [...fallbackIgnitionOptions];
+
+    const current = form.ignition.trim();
+    if (current && !options.includes(current)) options.unshift(current);
+    return options;
+  }, [form.ignition, ini]);
 
   const metadata = useMemo<PublishedTuneMetadata | null>(() => {
     if (!tune || !form.validationStatus || !form.classification) return null;
@@ -679,7 +737,18 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         <div className="submit-grid four">
           <TextField label="Vehicle make" value={form.vehicleMake} onChange={(value) => update('vehicleMake', value)} />
           <TextField label="Vehicle model" value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
-          <TextField label="Model year" type="number" value={form.vehicleYear} onChange={(value) => update('vehicleYear', value)} />
+          <label className="submit-field">
+            <span>Model year</span>
+            <select
+              value={form.vehicleYear}
+              onChange={(event) => update('vehicleYear', event.target.value)}
+            >
+              <option value="">Not specified</option>
+              {modelYearOptions.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </label>
           <TextField label="Trim / variant" value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
 
           <TextField label="Engine make" value={form.engineMake} onChange={(value) => update('engineMake', value)} />
@@ -703,8 +772,39 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             )}
           </label>
           <TextField label="Compression ratio" type="number" step="0.01" value={form.compressionRatio} onChange={(value) => update('compressionRatio', value)} />
-          <TextField label="Fuel" value={form.fuel} onChange={(value) => update('fuel', value)} placeholder="95 RON E10 / E85 / ..." />
-          <TextField label="Ignition" value={form.ignition} onChange={(value) => update('ignition', value)} placeholder="Sequential / wasted spark / ..." />
+          <label className="submit-field">
+            <span>Fuel</span>
+            <select
+              value={form.fuel}
+              onChange={(event) => update('fuel', event.target.value)}
+            >
+              <option value="">Select fuel…</option>
+              {selectableFuelOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            {form.fuel.startsWith('Flex fuel (fallback ') && (
+              <small>Auto-detected from the tune's flex-fuel state and configured fallback ethanol content.</small>
+            )}
+          </label>
+
+          <label className="submit-field">
+            <span>Ignition</span>
+            <select
+              value={form.ignition}
+              onChange={(event) => update('ignition', event.target.value)}
+            >
+              <option value="">Select ignition mode…</option>
+              {selectableIgnitionOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <small>
+              {ini
+                ? 'Options are taken from this firmware definition.'
+                : 'Fallback EpicEFI ignition modes are shown until the matching INI is loaded.'}
+            </small>
+          </label>
         </div>
       </section>
 
