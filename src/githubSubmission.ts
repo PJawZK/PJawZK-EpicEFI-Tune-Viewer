@@ -1,5 +1,5 @@
 const API_ROOT = 'https://api.github.com';
-const API_VERSION = '2026-03-10';
+const API_VERSION = '2022-11-28';
 const BASE_OWNER = 'PJawZK';
 const BASE_REPO = 'PJawZK-EpicEFI-Tune-Viewer';
 const BASE_BRANCH = 'main';
@@ -13,7 +13,6 @@ export type GitHubSubmissionProgress =
   | 'authenticating'
   | 'checking-main'
   | 'uploading-files'
-  | 'creating-commit'
   | 'publishing-main';
 
 export type GitHubSubmissionResult = {
@@ -34,29 +33,22 @@ type GitHubRepo = {
   };
 };
 
-type GitRef = {
-  object: {
-    sha: string;
+type ContentEntry = {
+  name: string;
+  path: string;
+  sha: string;
+  type: string;
+};
+
+type ContentWriteResult = {
+  content?: {
+    sha?: string;
+    path?: string;
   };
-};
-
-type GitCommit = {
-  tree: {
+  commit: {
     sha: string;
+    html_url?: string;
   };
-};
-
-type GitBlob = {
-  sha: string;
-};
-
-type GitTree = {
-  sha: string;
-};
-
-type CreatedCommit = {
-  sha: string;
-  html_url?: string;
 };
 
 function apiHeaders(token: string): HeadersInit {
@@ -96,7 +88,7 @@ async function githubRequest<T>(
       if (payload.message) message = payload.message;
       if (payload.documentation_url) message += ` (${payload.documentation_url})`;
     } catch {
-      // Keep the HTTP status text when GitHub did not return JSON.
+      // Keep the HTTP status when GitHub did not return JSON.
     }
     throw new Error(message);
   }
@@ -122,7 +114,7 @@ async function ensureTuneIdIsUnused(token: string, tuneId: string) {
   const path = `/repos/${BASE_OWNER}/${BASE_REPO}/contents/public/tunes/`
     + `${encodeURIComponent(tuneId)}?ref=${encodeURIComponent(BASE_BRANCH)}`;
 
-  const existing = await githubRequest<unknown | undefined>(
+  const existing = await githubRequest<ContentEntry[] | undefined>(
     token,
     path,
     {},
@@ -134,6 +126,51 @@ async function ensureTuneIdIsUnused(token: string, tuneId: string) {
       `Tune folder "${tuneId}" already exists on ${BASE_BRANCH}. Choose another tune ID.`,
     );
   }
+}
+
+async function createContentFile(
+  token: string,
+  file: GitHubSubmissionFile,
+  message: string,
+): Promise<ContentWriteResult> {
+  const content = await blobToBase64(file.blob);
+  return githubRequest<ContentWriteResult>(
+    token,
+    `/repos/${BASE_OWNER}/${BASE_REPO}/contents/${file.path
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/')}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        message,
+        content,
+        branch: BASE_BRANCH,
+      }),
+    },
+  );
+}
+
+async function deleteContentFile(
+  token: string,
+  path: string,
+  sha: string,
+) {
+  await githubRequest(
+    token,
+    `/repos/${BASE_OWNER}/${BASE_REPO}/contents/${path
+      .split('/')
+      .map(encodeURIComponent)
+      .join('/')}`,
+    {
+      method: 'DELETE',
+      body: JSON.stringify({
+        message: `Cleanup failed tune upload [skip ci]`,
+        sha,
+        branch: BASE_BRANCH,
+      }),
+    },
+  );
 }
 
 export async function submitTuneToGitHub({
@@ -165,124 +202,75 @@ export async function submitTuneToGitHub({
     throw new Error(
       `GitHub user @${user.login} does not have write permission to `
       + `${BASE_OWNER}/${BASE_REPO}. Direct upload to main is available only to `
-      + 'trusted repository writers. Use the ZIP fallback for manual submission.',
+      + 'trusted repository writers.',
     );
   }
 
   onProgress?.('checking-main', `${BASE_OWNER}/${BASE_REPO}`);
   await ensureTuneIdIsUnused(trimmedToken, tuneId);
 
-  const ref = await githubRequest<GitRef>(
-    trimmedToken,
-    `/repos/${BASE_OWNER}/${BASE_REPO}/git/ref/heads/${encodeURIComponent(BASE_BRANCH)}`,
-  );
-  const baseCommitSha = ref.object.sha;
-  const baseCommit = await githubRequest<GitCommit>(
-    trimmedToken,
-    `/repos/${BASE_OWNER}/${BASE_REPO}/git/commits/${baseCommitSha}`,
-  );
+  const metadata = files.find((file) => file.path.endsWith('/metadata.json'));
+  if (!metadata) throw new Error('Submission is missing metadata.json.');
 
-  onProgress?.('uploading-files', `0/${files.length}`);
-  const treeEntries: Array<{
-    path: string;
-    mode: '100644';
-    type: 'blob';
-    sha: string;
-  }> = [];
-
-  for (let index = 0; index < files.length; index += 1) {
-    const file = files[index];
-    const content = await blobToBase64(file.blob);
-    const created = await githubRequest<GitBlob>(
-      trimmedToken,
-      `/repos/${BASE_OWNER}/${BASE_REPO}/git/blobs`,
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          content,
-          encoding: 'base64',
-        }),
-      },
-    );
-
-    treeEntries.push({
-      path: file.path,
-      mode: '100644',
-      type: 'blob',
-      sha: created.sha,
-    });
-
-    onProgress?.('uploading-files', `${index + 1}/${files.length}`);
-  }
-
-  onProgress?.('creating-commit', BASE_BRANCH);
-  const tree = await githubRequest<GitTree>(
-    trimmedToken,
-    `/repos/${BASE_OWNER}/${BASE_REPO}/git/trees`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        base_tree: baseCommit.tree.sha,
-        tree: treeEntries,
-      }),
-    },
-  );
-
-  const commitMessage = [
-    `Tune: ${title}`,
-    '',
-    `Tune ID: ${tuneId}`,
-    `Firmware: ${firmwareSignature}`,
-    `Uploaded by: @${user.login}`,
-  ].join('\n');
-
-  const commit = await githubRequest<CreatedCommit>(
-    trimmedToken,
-    `/repos/${BASE_OWNER}/${BASE_REPO}/git/commits`,
-    {
-      method: 'POST',
-      body: JSON.stringify({
-        message: commitMessage,
-        tree: tree.sha,
-        parents: [baseCommitSha],
-      }),
-    },
-  );
-
-  onProgress?.('publishing-main', commit.sha.slice(0, 12));
+  const stagedFiles = files.filter((file) => file !== metadata);
+  const created: Array<{ path: string; sha: string }> = [];
 
   try {
-    await githubRequest(
+    for (let index = 0; index < stagedFiles.length; index += 1) {
+      const file = stagedFiles[index];
+      onProgress?.('uploading-files', `${index + 1}/${files.length} · ${file.path.split('/').pop()}`);
+
+      const result = await createContentFile(
+        trimmedToken,
+        file,
+        `Stage tune ${tuneId}: ${file.path.split('/').pop()} [skip ci]`,
+      );
+
+      const sha = result.content?.sha;
+      if (sha) created.push({ path: file.path, sha });
+    }
+
+    onProgress?.('publishing-main', `${files.length}/${files.length} · metadata.json`);
+    const finalResult = await createContentFile(
       trimmedToken,
-      `/repos/${BASE_OWNER}/${BASE_REPO}/git/refs/heads/${encodeURIComponent(BASE_BRANCH)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          sha: commit.sha,
-          force: false,
-        }),
-      },
+      metadata,
+      [
+        `Tune: ${title}`,
+        '',
+        `Tune ID: ${tuneId}`,
+        `Firmware: ${firmwareSignature}`,
+        `Uploaded by: @${user.login}`,
+      ].join('\n'),
     );
+
+    return {
+      commitSha: finalResult.commit.sha,
+      commitUrl:
+        finalResult.commit.html_url
+        || `https://github.com/${BASE_OWNER}/${BASE_REPO}/commit/${finalResult.commit.sha}`,
+      targetRepository: repository.full_name,
+      login: user.login,
+    };
   } catch (error) {
+    for (const staged of [...created].reverse()) {
+      try {
+        await deleteContentFile(trimmedToken, staged.path, staged.sha);
+      } catch {
+        // Best-effort cleanup only. Preserve the original upload error.
+      }
+    }
+
     if (
       error instanceof Error
-      && /fast forward|reference update failed|conflict|protected/i.test(error.message)
+      && /Resource not accessible by personal access token/i.test(error.message)
     ) {
       throw new Error(
-        'GitHub did not move main to the new tune commit. Main may have changed during the '
-        + 'upload or branch rules may now block direct writes. No force update was attempted. '
-        + 'Refresh the page and retry.',
+        'This GitHub token can read the repository but cannot write repository contents. '
+        + 'Edit or recreate the fine-grained token with Repository access set to '
+        + 'PJawZK-EpicEFI-Tune-Viewer and Repository permissions → Contents → Read and write.',
       );
     }
+
     throw error;
   }
-
-  return {
-    commitSha: commit.sha,
-    commitUrl:
-      commit.html_url
-      || `https://github.com/${BASE_OWNER}/${BASE_REPO}/commit/${commit.sha}`,
-    targetRepository: repository.full_name,
-    login: user.login,
-  };
 }
