@@ -20,6 +20,7 @@ import {
   findPublishedTune,
   loadPublishedText,
   loadTuneIndex,
+  rememberPublishedTune,
 } from './tuneLibrary';
 import {
   submitTuneToGitHub,
@@ -879,6 +880,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
             },
           });
 
+      rememberPublishedTune(finalMetadata);
       setGitHubResult(result);
       setGitHubProgress('');
       setGitHubProgressDetail('');
