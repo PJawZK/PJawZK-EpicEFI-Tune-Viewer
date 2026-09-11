@@ -1,0 +1,33 @@
+{
+  "id": "epicefi-base-gggi-e36-m52-spectre",
+  "title": "BMW E36 M52 SPECTRE Base Map",
+  "author": "GGGI",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "SPECTRE / STM32F407",
+  "summary": "BMW E36 M52 base map converted from Speeduino SPECTRE hardware to rusEFI/EpicEFI.",
+  "vehicle": {
+    "make": "BMW",
+    "model": "3 Series (E36)"
+  },
+  "engine": {
+    "make": "BMW",
+    "code": "M52"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "BMW",
+    "E36",
+    "M52",
+    "SPECTRE",
+    "STM32F407"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes describe a Speeduino SPECTRE to rusEFI/EpicEFI hardware conversion using 407VGT6.",
+  "firmwareSignature": "rusEFI main.2025.08.01.mega100.3246308713",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

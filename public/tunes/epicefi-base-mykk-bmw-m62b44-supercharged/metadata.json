@@ -1,0 +1,36 @@
+{
+  "id": "epicefi-base-mykk-bmw-m62b44-supercharged",
+  "title": "BMW M62B44 Supercharged Base Tune",
+  "author": "MykkBMW",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "MEGA144H7 / UA4C",
+  "summary": "BMW M62B44 4.4L V8 base tune for an Eaton M122 supercharger setup at approximately 8 psi.",
+  "vehicle": {
+    "make": "BMW"
+  },
+  "engine": {
+    "make": "BMW",
+    "code": "M62B44",
+    "displacementLiters": 4.4,
+    "cylinders": 8,
+    "aspiration": "Supercharged"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "BMW",
+    "M62B44",
+    "Eaton M122",
+    "supercharged",
+    "MEGA144H7",
+    "UA4C"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes specify manual throttle, no IAC, crank sensor only, and no cam sensor.",
+  "firmwareSignature": "rusEFI master.2026.01.08.M144H7BLACK.2858729855",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

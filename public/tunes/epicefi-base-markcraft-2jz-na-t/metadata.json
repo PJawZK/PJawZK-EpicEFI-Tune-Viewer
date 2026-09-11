@@ -1,0 +1,32 @@
+{
+  "id": "epicefi-base-markcraft-2jz-na-t",
+  "title": "Toyota 2JZ NA-T 650cc T4 Base Tune",
+  "author": "MarkCraftPerformance",
+  "publishedAt": "2026-01-29",
+  "ecuTarget": "UA4C / M144F7RED",
+  "summary": "2JZ naturally-aspirated-to-turbo base tune with 650 cc/min injectors and T4 turbo hardware.",
+  "engine": {
+    "make": "Toyota",
+    "code": "2JZ",
+    "aspiration": "Turbocharged"
+  },
+  "injectorCc": 650,
+  "tags": [
+    "EpicEFI base map",
+    "Toyota",
+    "2JZ",
+    "NA-T",
+    "T4",
+    "UA4C",
+    "M144F7RED"
+  ],
+  "firmwareSignature": "rusEFI master.2025.12.04.M144F7RED.3711662136",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: MarkCraftPerformance - 2jz-NA-T 650inj T4 - ua4c M144F7RED."
+}

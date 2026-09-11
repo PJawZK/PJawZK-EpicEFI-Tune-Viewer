@@ -1,0 +1,33 @@
+{
+  "id": "epicefi-base-sheckta-civic-eg-d16z6",
+  "title": "Honda Civic EG D16Z6 Base Tune",
+  "author": "sheckta",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "rusEFI single-board OBD1 Honda",
+  "summary": "Honda Civic EG D16Z6 profile for the rusEFI single-board OBD1 Honda hardware.",
+  "vehicle": {
+    "make": "Honda",
+    "model": "Civic EG"
+  },
+  "engine": {
+    "make": "Honda",
+    "code": "D16Z6"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Honda",
+    "Civic EG",
+    "D16Z6",
+    "OBD1",
+    "rusEFI single board"
+  ],
+  "firmwareSignature": "rusEFI master.2026.01.25.uaefi-obd1.2756077452",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: sheckta - honda civic eg D16z6 - rusefi single board obd1 honda."
+}

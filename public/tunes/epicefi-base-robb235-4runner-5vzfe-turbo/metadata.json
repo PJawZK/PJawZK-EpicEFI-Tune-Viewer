@@ -1,0 +1,37 @@
+{
+  "id": "epicefi-base-robb235-4runner-5vzfe-turbo",
+  "title": "1999 Toyota 4Runner 5VZ-FE Turbo Base Tune",
+  "author": "Robb235",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "UAEFI",
+  "summary": "Turbocharged 1999 Toyota 4Runner 5VZ-FE profile supporting speed-density, factory-MAF, or blended MAF/MAP operation.",
+  "vehicle": {
+    "make": "Toyota",
+    "model": "4Runner",
+    "year": 1999
+  },
+  "engine": {
+    "make": "Toyota",
+    "code": "5VZ-FE",
+    "aspiration": "Turbocharged"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Toyota",
+    "4Runner",
+    "5VZ-FE",
+    "turbo",
+    "MAF",
+    "speed density",
+    "UAEFI"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes say the tune can run speed density, factory MAF, or blended MAF/MAP.",
+  "firmwareSignature": "epicEFI master.2025.12.15.uaefi.2263675514",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

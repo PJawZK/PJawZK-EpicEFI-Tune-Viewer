@@ -1,0 +1,32 @@
+{
+  "id": "epicefi-base-aboy-mitsubishi-4g93-272cam",
+  "title": "Mitsubishi 4G93 272 Cam Base Tune",
+  "author": "aboy",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "CORE8 MyEFI",
+  "summary": "Mitsubishi 4G93 base profile labeled for a 272-degree camshaft setup.",
+  "vehicle": {
+    "make": "Mitsubishi"
+  },
+  "engine": {
+    "make": "Mitsubishi",
+    "code": "4G93"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Mitsubishi",
+    "4G93",
+    "272 cam",
+    "CORE8",
+    "MyEFI"
+  ],
+  "firmwareSignature": "rusEFI master.2025.11.13.f407-discoveryBIGFUEL.2601369352",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: aboy mitsubishi 4g93 272 cam core8.Myefi."
+}

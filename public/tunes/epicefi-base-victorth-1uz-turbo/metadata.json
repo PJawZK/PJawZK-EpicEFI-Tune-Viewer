@@ -1,0 +1,31 @@
+{
+  "id": "epicefi-base-victorth-1uz-turbo",
+  "title": "1UZ Turbo Base Tune",
+  "author": "VictorTH",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "M144F7RED",
+  "summary": "Starting profile for a Toyota 1UZ setup, intended for initial naturally aspirated or turbo use and limited to 3500 RPM in the source notes.",
+  "engine": {
+    "make": "Toyota",
+    "code": "1UZ",
+    "aspiration": "Turbo-capable base"
+  },
+  "injectorCc": 240,
+  "tags": [
+    "EpicEFI base map",
+    "Toyota",
+    "1UZ",
+    "turbo",
+    "M144F7RED",
+    "startup"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes specify Honda K24 coils, OEM 240 cc/min injectors, 36-2 crank trigger, Hall crank/cam sensors, GM electronic throttle body and BMW E46 pedal sensor. The base-map site INI had signature rusEFI master.2026.01.05.M144F7RED.1240587255; the exact matching definition was resolved from firmware/2026-01-08/rusefi_bundle_M144F7RED.zip (rusefi.snapshot.M144F7RED/rusefi_M144F7RED.ini).",
+  "firmwareSignature": "rusEFI master.2026.01.08.M144F7RED.2084742931",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "epicefi-base-aboy-4g93-mivec-pnp",
+  "title": "4G93 MIVEC PnP Base Tune",
+  "author": "aboy",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "Discovery / BigFuel",
+  "summary": "Plug-and-play-oriented 4G93 MIVEC base tune for the Discovery/BigFuel hardware family.",
+  "engine": {
+    "make": "Mitsubishi",
+    "code": "4G93 MIVEC"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Mitsubishi",
+    "4G93",
+    "MIVEC",
+    "PnP",
+    "Discovery",
+    "BigFuel"
+  ],
+  "firmwareSignature": "rusEFI master.2026.01.08.f407-discoveryBIGFUEL.3001439173",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: aboy 4g93 mivec pnp - discovery bigfuel."
+}

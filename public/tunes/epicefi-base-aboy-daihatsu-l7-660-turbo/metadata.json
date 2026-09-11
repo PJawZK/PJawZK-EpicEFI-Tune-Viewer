@@ -1,0 +1,36 @@
+{
+  "id": "epicefi-base-aboy-daihatsu-l7-660-turbo",
+  "title": "Daihatsu L7 660 Turbo Base Tune",
+  "author": "aboy",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "CORE8 MyEFI / 407 Discovery BigFuel",
+  "summary": "Daihatsu L7 660 cc turbo profile for CORE8 MyEFI / Discovery BigFuel hardware.",
+  "vehicle": {
+    "make": "Daihatsu",
+    "model": "L7"
+  },
+  "engine": {
+    "make": "Daihatsu",
+    "displacementLiters": 0.66,
+    "aspiration": "Turbocharged"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Daihatsu",
+    "L7",
+    "660",
+    "turbo",
+    "CORE8",
+    "MyEFI",
+    "BigFuel"
+  ],
+  "firmwareSignature": "rusEFI master.2025.08.07.f407-discoveryBIGFUEL.2802562625",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: aboy daihatsu L7 660 TURBO core8 MYEFI-407discoveryBIGFUEL."
+}

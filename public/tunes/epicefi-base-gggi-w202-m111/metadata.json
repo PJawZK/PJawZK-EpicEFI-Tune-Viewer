@@ -1,0 +1,31 @@
+{
+  "id": "epicefi-base-gggi-w202-m111",
+  "title": "Mercedes-Benz W202 M111 Base Map",
+  "author": "GGGI",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "EpicEFI / rusEFI",
+  "summary": "Mercedes-Benz W202 profile for the M111 engine.",
+  "vehicle": {
+    "make": "Mercedes-Benz",
+    "model": "C-Class (W202)"
+  },
+  "engine": {
+    "make": "Mercedes-Benz",
+    "code": "M111"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Mercedes-Benz",
+    "W202",
+    "M111"
+  ],
+  "firmwareSignature": "rusEFI master.2025.11.06.MEGA100F4.3421988235",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: GGGI - W202_m111_RUS."
+}

@@ -1,0 +1,33 @@
+{
+  "id": "epicefi-base-aboy-proton-s4ph-turbo",
+  "title": "Proton S4PH Turbo Base Tune",
+  "author": "aboy",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "MEGA144H7",
+  "summary": "Daily-driver Proton S4PH turbo profile for MEGA144H7.",
+  "vehicle": {
+    "make": "Proton"
+  },
+  "engine": {
+    "make": "Proton",
+    "code": "S4PH",
+    "aspiration": "Turbocharged"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Proton",
+    "S4PH",
+    "turbo",
+    "MEGA144H7",
+    "daily driver"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes identify this as a daily-driver tune with long-term fuel trims active.",
+  "firmwareSignature": "rusEFI master.2025.12.31.MEGA144H7.134762911",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

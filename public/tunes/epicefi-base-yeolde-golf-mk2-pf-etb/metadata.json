@@ -1,0 +1,33 @@
+{
+  "id": "epicefi-base-yeolde-golf-mk2-pf-etb",
+  "title": "Volkswagen Golf Mk2 PF ETB Base Tune",
+  "author": "YeOldePIrate",
+  "publishedAt": "2026-01-20",
+  "ecuTarget": "Custom F4 board",
+  "summary": "Volkswagen Golf Mk2 PF-engine initial tune using electronic throttle on a custom F4-based ECU board.",
+  "vehicle": {
+    "make": "Volkswagen",
+    "model": "Golf Mk2"
+  },
+  "engine": {
+    "make": "Volkswagen",
+    "code": "PF"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Volkswagen",
+    "Golf Mk2",
+    "PF",
+    "ETB",
+    "custom board"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes warn that the setup has a non-standard fuel-pressure regulator, custom ETB/pedal behavior, and custom Lua.",
+  "firmwareSignature": "rusEFI master.2025.12.27.MEGA100F4.1282179783",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "id": "epicefi-base-dcwerx-e840-mega144h7",
+  "title": "E840 Generic Base Tune",
+  "author": "DCwerx",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "MEGA144H7",
+  "summary": "Generic E840 base tune pinned to the MEGA144H7 variant.",
+  "tags": [
+    "EpicEFI base map",
+    "E840",
+    "generic",
+    "MEGA144H7"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes identify this as a generic E840 base map for the MEGA144H7 variant.",
+  "firmwareSignature": "rusEFI master.2025.12.09.MEGA144H7.4188835460",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

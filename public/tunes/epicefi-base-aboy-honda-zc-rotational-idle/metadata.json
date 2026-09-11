@@ -1,0 +1,33 @@
+{
+  "id": "epicefi-base-aboy-honda-zc-rotational-idle",
+  "title": "Honda ZC Twin-Cam Rotational Idle Base Tune",
+  "author": "aboy",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "CORE8 MyEFI",
+  "summary": "Honda ZC twin-cam profile labeled for rotational idle operation.",
+  "vehicle": {
+    "make": "Honda"
+  },
+  "engine": {
+    "make": "Honda",
+    "code": "ZC"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Honda",
+    "ZC",
+    "twin cam",
+    "rotational idle",
+    "CORE8",
+    "MyEFI"
+  ],
+  "firmwareSignature": "rusEFI master.2026.01.08.f407-discoveryBIGFUEL.3001439173",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: aboy honda zc twicam rotational idle. - core8 Myefi."
+}

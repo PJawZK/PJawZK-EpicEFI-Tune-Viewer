@@ -1,0 +1,36 @@
+{
+  "id": "epicefi-base-ramzes-satria-4g61t",
+  "title": "Proton Satria 4G61T Base Tune",
+  "author": "ramzes",
+  "publishedAt": "2026-01-29",
+  "ecuTarget": "epicECU",
+  "summary": "Proton Satria 4G61T turbo profile using 750 cc/min injectors and a TD04-19T turbo.",
+  "vehicle": {
+    "make": "Proton",
+    "model": "Satria"
+  },
+  "engine": {
+    "make": "Mitsubishi",
+    "code": "4G61T",
+    "aspiration": "Turbocharged"
+  },
+  "injectorCc": 750,
+  "tags": [
+    "EpicEFI base map",
+    "Proton",
+    "Satria",
+    "Mitsubishi",
+    "4G61T",
+    "TD04-19T",
+    "epicECU"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes specify sequential fuel, sequential ignition and K20 coil-on-plug ignition.",
+  "firmwareSignature": "rusEFI master.2026.01.05.epicECU.1829923382",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}

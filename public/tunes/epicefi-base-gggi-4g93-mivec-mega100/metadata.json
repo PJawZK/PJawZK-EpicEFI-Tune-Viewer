@@ -1,0 +1,28 @@
+{
+  "id": "epicefi-base-gggi-4g93-mivec-mega100",
+  "title": "Mitsubishi 4G93 MIVEC Base Map",
+  "author": "GGGI",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "MEGA100",
+  "summary": "Generic Mitsubishi 4G93 MIVEC profile for a MEGA100-class EpicEFI/rusEFI installation.",
+  "engine": {
+    "make": "Mitsubishi",
+    "code": "4G93 MIVEC"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Mitsubishi",
+    "4G93",
+    "MIVEC",
+    "MEGA100"
+  ],
+  "firmwareSignature": "rusEFI main.2025.10.05.mega100.3323114324",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  },
+  "notes": "Imported from the EpicEFI base-map library. Original label: GGGI - Mitsu_4G93_MIVEC_RUS - MEGA100."
+}

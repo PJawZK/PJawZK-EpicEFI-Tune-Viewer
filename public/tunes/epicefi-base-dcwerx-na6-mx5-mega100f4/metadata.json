@@ -1,0 +1,29 @@
+{
+  "id": "epicefi-base-dcwerx-na6-mx5-mega100f4",
+  "title": "Mazda MX-5 NA6 PnP Base Map",
+  "author": "DCwerx",
+  "publishedAt": "2026-01-28",
+  "ecuTarget": "MEGA100F4",
+  "summary": "Generic plug-and-play base map for an NA6 Mazda MX-5 on the MEGA100F4 Blue board.",
+  "vehicle": {
+    "make": "Mazda",
+    "model": "MX-5 NA6"
+  },
+  "tags": [
+    "EpicEFI base map",
+    "Mazda",
+    "MX-5",
+    "NA6",
+    "PnP",
+    "MEGA100F4"
+  ],
+  "notes": "Imported from the EpicEFI base-map library. Source notes describe this as a generic NA6 MX-5 plug-and-play map with MEGA100F4 Blue-board pinout.",
+  "firmwareSignature": "rusEFI master.2026.01.05.MEGA100F4.2591763245",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "versionLabel": "EpicEFI Base Map",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}
