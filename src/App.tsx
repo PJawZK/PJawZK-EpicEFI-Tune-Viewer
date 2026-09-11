@@ -127,7 +127,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={route.kind === 'submit' ? 'active' : ''}
+            className={route.kind === 'submit' || route.kind === 'edit' ? 'active' : ''}
             onClick={() => navigate('/submit')}
           >
             Submit Tune
