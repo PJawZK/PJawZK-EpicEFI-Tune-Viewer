@@ -14,6 +14,7 @@ import {
 import { parseIni } from './ini';
 import { resolveIniText } from './iniExpression';
 import { parseMsq } from './msq';
+import TuneBrowser from './TuneBrowser';
 import './styles.css';
 
 type DefinitionSource = 'none' | 'registry' | 'manual';
@@ -420,12 +421,27 @@ export default function App() {
         </section>
       )}
 
+      {tune && ini && signatureMatch && ini.menus.length > 0 && (
+        <section className="panel tune-browser-panel">
+          <div className="panel-heading browser-intro">
+            <div>
+              <p className="eyebrow">INI-driven tune navigation</p>
+              <h2>Browse the tune by EpicEFI menu</h2>
+            </div>
+            <span className="badge badge-ok">
+              {ini.menus.length} menus · {ini.dialogs.length} dialogs · {ini.curves.length} curves
+            </span>
+          </div>
+          <TuneBrowser ini={ini} tune={tune} />
+        </section>
+      )}
+
       {tune && ini && signatureMatch && (
         <>
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">Definition-driven interpretation</p>
+                <p className="eyebrow">Diagnostics / raw definition data</p>
                 <h2>
                   {tune.constants.filter((constant) => definitionMap.has(constant.name)).length.toLocaleString()}
                   {' '}matched settings
@@ -477,7 +493,7 @@ export default function App() {
           <section className="panel">
             <div className="panel-heading">
               <div>
-                <p className="eyebrow">EpicEFI calibration tables</p>
+                <p className="eyebrow">Diagnostics / flat calibration table index</p>
                 <h2>{recognizedTables.length} renderable tables</h2>
               </div>
               <select
@@ -512,7 +528,7 @@ export default function App() {
       )}
 
       <footer>
-        V0.2 prototype — exact-signature automatic definitions with manual fallback. Local MSQ/INI files
+        V0.3 prototype — INI-driven tune navigation with exact-signature definitions and manual fallback. Local MSQ/INI files
         are not published.
       </footer>
     </main>
