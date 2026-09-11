@@ -278,7 +278,7 @@ jobs:
               destination.write_bytes(data)
 
           sig_re = re.compile(br'<versionInfo\b[^>]*\bsignature\s*=\s*["\']([^"\']+)["\']', re.I)
-          ini_sig_re = re.compile(r"^\\s*signature\\s*=\\s*[\\\"']([^\\\"']+)[\\\"']", re.I | re.M)
+          ini_sig_re = re.compile(r"^\s*signature\s*=\s*[\"']([^\"']+)[\"']", re.I | re.M)
           firmware_paths = None
 
           def ini_signature(data):
@@ -296,7 +296,7 @@ jobs:
                       if isinstance(p, str) and p.lower().endswith('.zip')
                   ]
 
-              date_match = re.search(r'(20\\d{2})\\.(\\d{2})\\.(\\d{2})', signature)
+              date_match = re.search(r'(20\d{2})\.(\d{2})\.(\d{2})', signature)
               date_folder = '-'.join(date_match.groups()) if date_match else ''
               parts = signature.split('.')
               target = parts[-2] if len(parts) >= 2 else ''
