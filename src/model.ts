@@ -138,3 +138,60 @@ export const tuneClassifications = [
   'Base Tune',
   'Development',
 ] as const;
+
+
+export type ValidationStatus = (typeof validationStatuses)[number];
+export type TuneClassification = (typeof tuneClassifications)[number];
+
+export type TuneVehicleMetadata = {
+  make?: string;
+  model?: string;
+  year?: number;
+  trim?: string;
+};
+
+export type TuneEngineMetadata = {
+  make?: string;
+  code?: string;
+  displacementLiters?: number;
+  cylinders?: number;
+  aspiration?: string;
+  compressionRatio?: number;
+};
+
+export type PublishedTuneFiles = {
+  msq: string;
+  ini?: string;
+};
+
+export type PublishedTuneMetadata = {
+  id: string;
+  title: string;
+  summary?: string;
+  author: string;
+  publishedAt: string;
+  updatedAt?: string;
+  ecuTarget: string;
+  firmwareSignature: string;
+  validationStatus: ValidationStatus;
+  classification: TuneClassification;
+  vehicle?: TuneVehicleMetadata;
+  engine?: TuneEngineMetadata;
+  fuel?: string;
+  ignition?: string;
+  injectorCc?: number;
+  powerHp?: number;
+  stockPowerHp?: number;
+  torqueNm?: number;
+  boostBar?: number;
+  tags: string[];
+  notes?: string;
+  versionLabel?: string;
+  parentTuneId?: string;
+  files: PublishedTuneFiles;
+};
+
+export type PublishedTuneIndex = {
+  schema: number;
+  tunes: PublishedTuneMetadata[];
+};
