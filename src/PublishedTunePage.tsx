@@ -134,7 +134,9 @@ function LineageTuneCard({
       </small>
       <span className="lineage-card-badges">
         <span className="badge">{tune.classification}</span>
-        <span className="badge badge-ok">{tune.validationStatus}</span>
+        <span className={`badge validation-badge ${validationClass(tune.validationStatus)}`}>
+          {tune.validationStatus}
+        </span>
       </span>
     </button>
   );
@@ -163,7 +165,9 @@ function RelatedTuneCard({
         </div>
         <div className="related-tune-badges">
           <span className="badge">{tune.classification}</span>
-          <span className="badge badge-ok">{tune.validationStatus}</span>
+          <span className={`badge validation-badge ${validationClass(tune.validationStatus)}`}>
+          {tune.validationStatus}
+        </span>
         </div>
       </div>
 
