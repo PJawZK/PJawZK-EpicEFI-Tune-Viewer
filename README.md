@@ -105,7 +105,7 @@ When deployed and configured, users can publish a **new Tune ID** or **new revis
 - a personal access token
 - repository collaborator access
 
-The service authenticates as a narrowly scoped GitHub App installation, revalidates the package server-side, verifies Turnstile server-side, forces public submissions to `Unverified`, checks the live destination and lineage on `main`, then stages tune assets and writes `metadata.json` last.
+The service authenticates as a narrowly scoped GitHub App installation, revalidates the package server-side, verifies Turnstile server-side, preserves normal self-declared validation states while rejecting `EpicEFI Verified`, checks the live destination and lineage on `main`, then stages tune assets and writes `metadata.json` last.
 
 The public service intentionally has no anonymous edit/delete path. Same-ID edits remain restricted to trusted repository writers.
 
