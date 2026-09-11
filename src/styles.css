@@ -1922,3 +1922,90 @@ footer {
     flex: 1 1 auto;
   }
 }
+
+
+.package-size-check {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.package-size-check span {
+  padding: 8px 10px;
+  border: 1px solid #2f3b40;
+  border-radius: 6px;
+  color: #879ba4;
+  background: #111719;
+  font-size: .74rem;
+}
+
+.package-size-check strong {
+  color: #dbe6e9;
+}
+
+.github-submit-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid #385044;
+  border-radius: 8px;
+  background: #111a16;
+}
+
+.github-submit-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.github-submit-heading h3 {
+  margin: 3px 0 0;
+  color: #e0e9e4;
+}
+
+.github-progress {
+  margin: 10px 0;
+  padding: 9px 11px;
+  border: 1px solid #32474f;
+  border-radius: 6px;
+  color: #a7bcc5;
+  background: #11191c;
+  font-size: .76rem;
+}
+
+.github-success {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #405d4b;
+  border-radius: 7px;
+  background: #132019;
+}
+
+.github-success strong,
+.github-success span {
+  display: block;
+}
+
+.github-success strong {
+  color: #dce9e1;
+}
+
+.github-success span {
+  margin-top: 3px;
+  color: #8fa79a;
+  font-size: .74rem;
+}
+
+@media (max-width: 700px) {
+  .github-submit-heading,
+  .github-success {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
