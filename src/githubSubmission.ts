@@ -64,12 +64,6 @@ type ContentWriteResult = {
   };
 };
 
-type GitBlob = {
-  sha: string;
-  content: string;
-  encoding: string;
-};
-
 type FileSnapshot = {
   path: string;
   sha: string;
@@ -305,17 +299,34 @@ async function resolvedWriteSha(
   );
 }
 
-async function readGitBlobBase64(token: string, sha: string): Promise<string> {
-  const blob = await githubRequest<GitBlob>(
-    token,
-    `/repos/${BASE_OWNER}/${BASE_REPO}/git/blobs/${encodeURIComponent(sha)}`,
+async function readContentBase64(token: string, path: string): Promise<string> {
+  const encodedPath = path
+    .split('/')
+    .map(encodeURIComponent)
+    .join('/');
+
+  const response = await fetch(
+    `${API_ROOT}/repos/${BASE_OWNER}/${BASE_REPO}/contents/${encodedPath}?ref=${encodeURIComponent(BASE_BRANCH)}`,
+    {
+      headers: {
+        ...apiHeaders(token),
+        Accept: 'application/vnd.github.raw+json',
+      },
+    },
   );
 
-  if (blob.encoding !== 'base64' || typeof blob.content !== 'string') {
-    throw new Error(`GitHub returned an unsupported blob encoding for ${sha}.`);
+  if (!response.ok) {
+    let message = `GitHub API returned ${response.status} ${response.statusText} while reading "${path}".`;
+    try {
+      const payload = await response.json() as { message?: string };
+      if (payload.message) message = payload.message;
+    } catch {
+      // Preserve the HTTP status when the response was not JSON.
+    }
+    throw new Error(message);
   }
 
-  return blob.content.replace(/\s+/g, '');
+  return blobToBase64(await response.blob());
 }
 
 function base64ToUtf8(value: string): string {
@@ -357,7 +368,7 @@ async function captureTuneSnapshot(
     snapshot.set(entry.path, {
       path: entry.path,
       sha: entry.sha,
-      contentBase64: await readGitBlobBase64(token, entry.sha),
+      contentBase64: await readContentBase64(token, entry.path),
     });
   }
 
