@@ -66,6 +66,23 @@ function parseMacroOptions(raw: string, macros: Map<string, string[]>): string[]
     .filter(Boolean);
 }
 
+function parseVirtualBitSet(
+  line: string,
+  macros: Map<string, string[]>,
+): { name: string; options: string[] } | null {
+  const match = line.match(/^([A-Za-z0-9_]+)\s*=\s*bits\s*,\s*(.+)$/i);
+  if (!match) return null;
+
+  const parts = splitCsv(match[2]);
+  const rangeIndex = parts.findIndex((part) => /^\[\s*\d+\s*:\s*\d+\s*\]$/.test(part));
+  if (rangeIndex !== 1 || parts.length <= rangeIndex + 1) return null;
+
+  return {
+    name: match[1],
+    options: parseMacroOptions(parts.slice(rangeIndex + 1).join(','), macros),
+  };
+}
+
 export function parseIni(raw: string): ParsedIni {
   const lines = raw.replace(/\r\n/g, '\n').split('\n');
   const macros = new Map<string, string[]>();
@@ -80,6 +97,7 @@ export function parseIni(raw: string): ParsedIni {
   let page: number | null = null;
   let signature = '';
   const constants = new Map<string, IniConstantDefinition>();
+  const labelSets = new Map<string, string[]>();
   const tables: IniTableDefinition[] = [];
   let activeTable: IniTableDefinition | null = null;
 
@@ -95,6 +113,11 @@ export function parseIni(raw: string): ParsedIni {
       }
       section = sectionMatch[1];
       continue;
+    }
+
+    const virtualBitSet = parseVirtualBitSet(line, macros);
+    if (virtualBitSet) {
+      labelSets.set(virtualBitSet.name, virtualBitSet.options);
     }
 
     if ((section === 'MegaTune' || section === 'TunerStudio') && !signature) {
@@ -191,10 +214,11 @@ export function parseIni(raw: string): ParsedIni {
       const zBins = line.match(/^zBins\s*=\s*([^,;]+)/i);
       if (zBins) activeTable.zBins = zBins[1].trim();
 
-      const labels = line.match(/^xyLabels\s*=\s*"([^"]*)"\s*,\s*(.+)$/i);
-      if (labels) {
-        activeTable.xLabel = labels[1];
-        activeTable.yLabel = unquote(labels[2]);
+      const labelsMatch = line.match(/^xyLabels\s*=\s*(.+)$/i);
+      if (labelsMatch) {
+        const labels = splitCsv(labelsMatch[1]);
+        activeTable.xLabel = unquote(labels[0] ?? '');
+        activeTable.yLabel = unquote(labels[1] ?? '');
       }
     }
   }
@@ -209,5 +233,6 @@ export function parseIni(raw: string): ParsedIni {
     signature,
     constants: [...constants.values()],
     tables: tables.filter((table) => table.xBins && table.yBins && table.zBins),
+    labelSets: Object.fromEntries(labelSets),
   };
 }
