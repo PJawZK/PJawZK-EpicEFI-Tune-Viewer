@@ -128,10 +128,11 @@ async function ensureTuneIdIsUnused(token: string, tuneId: string) {
   }
 }
 
-async function createContentFile(
+async function writeContentFile(
   token: string,
   file: GitHubSubmissionFile,
   message: string,
+  sha?: string,
 ): Promise<ContentWriteResult> {
   const content = await blobToBase64(file.blob);
   return githubRequest<ContentWriteResult>(
@@ -146,6 +147,7 @@ async function createContentFile(
         message,
         content,
         branch: BASE_BRANCH,
+        ...(sha ? { sha } : {}),
       }),
     },
   );
@@ -171,6 +173,168 @@ async function deleteContentFile(
       }),
     },
   );
+}
+
+async function getTuneFolderEntries(
+  token: string,
+  tuneId: string,
+): Promise<ContentEntry[] | null> {
+  const path = `/repos/${BASE_OWNER}/${BASE_REPO}/contents/public/tunes/`
+    + `${encodeURIComponent(tuneId)}?ref=${encodeURIComponent(BASE_BRANCH)}`;
+
+  return githubRequest<ContentEntry[] | null>(
+    token,
+    path,
+    {},
+    [404],
+  );
+}
+
+function permissionError(error: unknown): Error | null {
+  if (
+    error instanceof Error
+    && /Resource not accessible by personal access token/i.test(error.message)
+  ) {
+    return new Error(
+      'This GitHub token can read the repository but cannot write repository contents. '
+      + 'Edit or recreate the fine-grained token with Repository access set to '
+      + 'PJawZK-EpicEFI-Tune-Viewer and Repository permissions → Contents → Read and write.',
+    );
+  }
+
+  return null;
+}
+
+export async function updateTuneOnGitHub({
+  token,
+  tuneId,
+  title,
+  firmwareSignature,
+  files,
+  deletePaths = [],
+  onProgress,
+}: {
+  token: string;
+  tuneId: string;
+  title: string;
+  firmwareSignature: string;
+  files: GitHubSubmissionFile[];
+  deletePaths?: string[];
+  onProgress?: (progress: GitHubSubmissionProgress, detail?: string) => void;
+}): Promise<GitHubSubmissionResult> {
+  const trimmedToken = token.trim();
+  if (!trimmedToken) throw new Error('Enter a GitHub access token.');
+
+  onProgress?.('authenticating');
+  const user = await githubRequest<GitHubUser>(trimmedToken, '/user');
+  const repository = await githubRequest<GitHubRepo>(
+    trimmedToken,
+    `/repos/${BASE_OWNER}/${BASE_REPO}`,
+  );
+
+  if (!repository.permissions?.push) {
+    throw new Error(
+      `GitHub user @${user.login} does not have write permission to `
+      + `${BASE_OWNER}/${BASE_REPO}. Editing published tunes is available only to `
+      + 'trusted repository writers.',
+    );
+  }
+
+  onProgress?.('checking-main', `${BASE_OWNER}/${BASE_REPO}`);
+  const existingEntries = await getTuneFolderEntries(trimmedToken, tuneId);
+  if (!existingEntries) {
+    throw new Error(
+      `Published tune folder "${tuneId}" no longer exists on ${BASE_BRANCH}.`,
+    );
+  }
+
+  const byPath = new Map(
+    existingEntries.map((entry) => [entry.path, entry]),
+  );
+  const metadata = files.find((file) => file.path.endsWith('/metadata.json'));
+  if (!metadata) throw new Error('Edit submission is missing metadata.json.');
+
+  const metadataEntry = byPath.get(metadata.path);
+  if (!metadataEntry) {
+    throw new Error('Published tune metadata.json no longer exists on main.');
+  }
+
+  const stagedFiles = files.filter((file) => file !== metadata);
+
+  try {
+    let completed = 0;
+    const total = stagedFiles.length + deletePaths.length + 1;
+
+    for (const file of stagedFiles) {
+      completed += 1;
+      onProgress?.(
+        'uploading-files',
+        `${completed}/${total} · ${file.path.split('/').pop()}`,
+      );
+
+      const existing = byPath.get(file.path);
+      await writeContentFile(
+        trimmedToken,
+        file,
+        `Update tune ${tuneId}: ${file.path.split('/').pop()} [skip ci]`,
+        existing?.sha,
+      );
+    }
+
+    for (const path of deletePaths) {
+      const existing = byPath.get(path);
+      if (!existing) continue;
+
+      completed += 1;
+      onProgress?.(
+        'uploading-files',
+        `${completed}/${total} · remove ${path.split('/').pop()}`,
+      );
+
+      await githubRequest(
+        trimmedToken,
+        `/repos/${BASE_OWNER}/${BASE_REPO}/contents/${path
+          .split('/')
+          .map(encodeURIComponent)
+          .join('/')}`,
+        {
+          method: 'DELETE',
+          body: JSON.stringify({
+            message: `Update tune ${tuneId}: remove ${path.split('/').pop()} [skip ci]`,
+            sha: existing.sha,
+            branch: BASE_BRANCH,
+          }),
+        },
+      );
+    }
+
+    onProgress?.('publishing-main', `${total}/${total} · metadata.json`);
+    const finalResult = await writeContentFile(
+      trimmedToken,
+      metadata,
+      [
+        `Update tune: ${title}`,
+        '',
+        `Tune ID: ${tuneId}`,
+        `Firmware: ${firmwareSignature}`,
+        `Updated by: @${user.login}`,
+      ].join('\n'),
+      metadataEntry.sha,
+    );
+
+    return {
+      commitSha: finalResult.commit.sha,
+      commitUrl:
+        finalResult.commit.html_url
+        || `https://github.com/${BASE_OWNER}/${BASE_REPO}/commit/${finalResult.commit.sha}`,
+      targetRepository: repository.full_name,
+      login: user.login,
+    };
+  } catch (error) {
+    const clearer = permissionError(error);
+    if (clearer) throw clearer;
+    throw error;
+  }
 }
 
 export async function submitTuneToGitHub({
@@ -220,7 +384,7 @@ export async function submitTuneToGitHub({
       const file = stagedFiles[index];
       onProgress?.('uploading-files', `${index + 1}/${files.length} · ${file.path.split('/').pop()}`);
 
-      const result = await createContentFile(
+      const result = await writeContentFile(
         trimmedToken,
         file,
         `Stage tune ${tuneId}: ${file.path.split('/').pop()} [skip ci]`,
@@ -231,7 +395,7 @@ export async function submitTuneToGitHub({
     }
 
     onProgress?.('publishing-main', `${files.length}/${files.length} · metadata.json`);
-    const finalResult = await createContentFile(
+    const finalResult = await writeContentFile(
       trimmedToken,
       metadata,
       [
@@ -260,17 +424,8 @@ export async function submitTuneToGitHub({
       }
     }
 
-    if (
-      error instanceof Error
-      && /Resource not accessible by personal access token/i.test(error.message)
-    ) {
-      throw new Error(
-        'This GitHub token can read the repository but cannot write repository contents. '
-        + 'Edit or recreate the fine-grained token with Repository access set to '
-        + 'PJawZK-EpicEFI-Tune-Viewer and Repository permissions → Contents → Read and write.',
-      );
-    }
-
+    const clearer = permissionError(error);
+    if (clearer) throw clearer;
     throw error;
   }
 }

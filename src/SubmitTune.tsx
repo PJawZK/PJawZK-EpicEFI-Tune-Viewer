@@ -16,9 +16,14 @@ import {
   type ValidationStatus,
 } from './model';
 import { parseMsq } from './msq';
-import { loadTuneIndex } from './tuneLibrary';
+import {
+  findPublishedTune,
+  loadPublishedText,
+  loadTuneIndex,
+} from './tuneLibrary';
 import {
   submitTuneToGitHub,
+  updateTuneOnGitHub,
   type GitHubSubmissionProgress,
   type GitHubSubmissionResult,
 } from './githubSubmission';
@@ -27,6 +32,7 @@ import { mergeEcuTargets } from './ecuTargets';
 
 type SubmitTuneProps = {
   navigate: (path: string) => void;
+  editId?: string;
 };
 
 type FormState = {
@@ -231,6 +237,49 @@ function compactObject<T extends Record<string, unknown>>(value: T): T {
   ) as T;
 }
 
+
+function formFromMetadata(metadata: PublishedTuneMetadata): FormState {
+  return {
+    id: metadata.id,
+    title: metadata.title,
+    summary: metadata.summary ?? '',
+    author: metadata.author,
+    ecuTarget: metadata.ecuTarget,
+    validationStatus: metadata.validationStatus,
+    classification: metadata.classification,
+    vehicleMake: metadata.vehicle?.make ?? '',
+    vehicleModel: metadata.vehicle?.model ?? '',
+    vehicleYear: metadata.vehicle?.year !== undefined ? String(metadata.vehicle.year) : '',
+    vehicleTrim: metadata.vehicle?.trim ?? '',
+    engineMake: metadata.engine?.make ?? '',
+    engineCode: metadata.engine?.code ?? '',
+    displacementLiters:
+      metadata.engine?.displacementLiters !== undefined
+        ? String(metadata.engine.displacementLiters)
+        : '',
+    cylinders:
+      metadata.engine?.cylinders !== undefined
+        ? String(metadata.engine.cylinders)
+        : '',
+    aspiration: metadata.engine?.aspiration ?? '',
+    compressionRatio:
+      metadata.engine?.compressionRatio !== undefined
+        ? String(metadata.engine.compressionRatio)
+        : '',
+    fuel: metadata.fuel ?? '',
+    ignition: metadata.ignition ?? '',
+    injectorCc: metadata.injectorCc !== undefined ? String(metadata.injectorCc) : '',
+    powerHp: metadata.powerHp !== undefined ? String(metadata.powerHp) : '',
+    stockPowerHp: metadata.stockPowerHp !== undefined ? String(metadata.stockPowerHp) : '',
+    torqueNm: metadata.torqueNm !== undefined ? String(metadata.torqueNm) : '',
+    boostBar: metadata.boostBar !== undefined ? String(metadata.boostBar) : '',
+    tags: metadata.tags.join(', '),
+    notes: metadata.notes ?? '',
+    versionLabel: metadata.versionLabel ?? '',
+    parentTuneId: metadata.parentTuneId ?? '',
+  };
+}
+
 function downloadBlob(blob: Blob, fileName: string) {
   const href = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -250,6 +299,7 @@ function TextField({
   required = false,
   type = 'text',
   step,
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -258,6 +308,7 @@ function TextField({
   required?: boolean;
   type?: 'text' | 'number';
   step?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className="submit-field">
@@ -268,13 +319,20 @@ function TextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        disabled={disabled}
       />
     </label>
   );
 }
 
-export default function SubmitTune({ navigate }: SubmitTuneProps) {
+export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
   const [form, setForm] = useState<FormState>(initialForm);
+  const [editLoading, setEditLoading] = useState(Boolean(editId));
+  const [editLoadError, setEditLoadError] = useState('');
+  const [originalPublishedAt, setOriginalPublishedAt] = useState('');
+  const [originalHadIni, setOriginalHadIni] = useState(false);
+  const [msqChanged, setMsqChanged] = useState(false);
+  const [iniChanged, setIniChanged] = useState(false);
   const [idTouched, setIdTouched] = useState(false);
   const [msqFile, setMsqFile] = useState<File | null>(null);
   const [tune, setTune] = useState<ParsedTune | null>(null);
@@ -331,6 +389,80 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!editId) {
+      setEditLoading(false);
+      return;
+    }
+
+    let active = true;
+    setEditLoading(true);
+    setEditLoadError('');
+
+    const loadPublishedForEdit = async () => {
+      const published = await findPublishedTune(editId);
+      if (!published) {
+        throw new Error(`Published tune "${editId}" was not found.`);
+      }
+
+      const msqRaw = await loadPublishedText(published.files.msq);
+      const parsedTune = parseMsq(msqRaw);
+      if (parsedTune.details.signature !== published.firmwareSignature) {
+        throw new Error(
+          'Published MSQ signature does not match its metadata. Editing is blocked.',
+        );
+      }
+
+      let parsedIni: ParsedIni | null = null;
+      let currentIniFile: File | null = null;
+
+      if (published.files.ini) {
+        const iniRaw = await loadPublishedText(published.files.ini);
+        parsedIni = parseIni(iniRaw);
+        if (parsedIni.signature !== parsedTune.details.signature) {
+          throw new Error(
+            'Published INI signature does not match the MSQ. Editing is blocked.',
+          );
+        }
+        currentIniFile = new File(
+          [iniRaw],
+          'mainController.ini',
+          { type: 'text/plain' },
+        );
+      }
+
+      const registry = await findRegisteredDefinition(parsedTune.details.signature);
+
+      if (!active) return;
+      setForm(formFromMetadata(published));
+      setIdTouched(true);
+      setOriginalPublishedAt(published.publishedAt);
+      setOriginalHadIni(Boolean(published.files.ini));
+      setMsqFile(new File([msqRaw], 'tune.msq', { type: 'application/xml' }));
+      setTune(parsedTune);
+      setIniFile(currentIniFile);
+      setIni(parsedIni);
+      setRegistryEntry(registry);
+      setRegistryStatus(registry ? 'found' : 'missing');
+      setMsqChanged(false);
+      setIniChanged(false);
+      setAutoFilledFields([]);
+      setEditLoading(false);
+    };
+
+    loadPublishedForEdit().catch((caught) => {
+      if (!active) return;
+      setEditLoadError(
+        caught instanceof Error ? caught.message : 'Unable to load this published tune for editing.',
+      );
+      setEditLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [editId]);
+
   const signatureMatch = Boolean(
     tune && ini && tune.details.signature && tune.details.signature === ini.signature,
   );
@@ -342,9 +474,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
     ),
   );
   const shouldIncludeIni = Boolean(
-    registryStatus !== 'found'
-    && iniFile
-    && signatureMatch,
+    iniFile
+    && signatureMatch
+    && (
+      registryStatus !== 'found'
+      || Boolean(editId && originalHadIni && !msqChanged)
+    ),
   );
 
   const modelYearOptions = useMemo(() => {
@@ -407,7 +542,11 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       title: form.title.trim(),
       summary: form.summary.trim() || undefined,
       author: form.author.trim(),
-      publishedAt: new Date().toISOString().slice(0, 10),
+      publishedAt:
+        editId && originalPublishedAt
+          ? originalPublishedAt
+          : new Date().toISOString().slice(0, 10),
+      updatedAt: editId ? new Date().toISOString().slice(0, 10) : undefined,
       ecuTarget: form.ecuTarget.trim(),
       firmwareSignature: tune.details.signature,
       validationStatus: form.validationStatus,
@@ -435,7 +574,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         ...(shouldIncludeIni ? { ini: 'mainController.ini' } : {}),
       },
     }) as PublishedTuneMetadata;
-  }, [form, shouldIncludeIni, tune]);
+  }, [editId, form, originalPublishedAt, shouldIncludeIni, tune]);
 
   const validationErrors = useMemo(() => {
     const errors: string[] = [];
@@ -449,7 +588,9 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       errors.push('Tune ID is required.');
     } else if (!/^[a-z0-9][a-z0-9._-]*$/.test(form.id.trim())) {
       errors.push('Tune ID may contain lowercase letters, digits, ".", "_" and "-" only.');
-    } else if (existingIds.has(form.id.trim())) {
+    } else if (editId && form.id.trim() !== editId) {
+      errors.push('Tune ID cannot be changed while editing a published tune.');
+    } else if (existingIds.has(form.id.trim()) && form.id.trim() !== editId) {
       errors.push('Tune ID already exists in the public catalog.');
     }
     if (!form.author.trim()) errors.push('Author is required.');
@@ -463,7 +604,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       errors.push('Parent tune ID must already exist in the public catalog.');
     }
     return errors;
-  }, [definitionReady, existingIds, form, ini, msqFile, signatureMatch, tune]);
+  }, [definitionReady, editId, existingIds, form, ini, msqFile, signatureMatch, tune]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -471,6 +612,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
   async function loadMsq(file: File | undefined) {
     if (!file) return;
+    if (editId) setMsqChanged(true);
 
     setFileError('');
     setPackageError('');
@@ -542,6 +684,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
   async function loadIni(file: File | undefined) {
     if (!file) return;
+    if (editId) setIniChanged(true);
 
     setFileError('');
     setPackageError('');
@@ -568,9 +711,9 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       `Tune ID: ${metadata.id}`,
       `Firmware signature: ${metadata.firmwareSignature}`,
       '',
-      'To publish during the GitHub prototype phase:',
-      `1. Add this folder under public/tunes/${metadata.id}/ in the repository.`,
-      '2. Open a pull request.',
+      'Repository package fallback:',
+      `1. Place this folder under public/tunes/${metadata.id}/ in the repository.`,
+      '2. Commit the folder to main.',
       '3. GitHub Actions validates the submission and regenerates the public Tune Hub index.',
       '4. Do not edit public/tunes/index.json manually.',
       '',
@@ -702,17 +845,39 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         );
       }
 
-      const result = await submitTuneToGitHub({
-        token: githubToken,
-        tuneId: finalMetadata.id,
-        title: finalMetadata.title,
-        firmwareSignature: finalMetadata.firmwareSignature,
-        files,
-        onProgress: (progress, detail = '') => {
-          setGitHubProgress(progress);
-          setGitHubProgressDetail(detail);
-        },
-      });
+      const result = editId
+        ? await updateTuneOnGitHub({
+            token: githubToken,
+            tuneId: finalMetadata.id,
+            title: finalMetadata.title,
+            firmwareSignature: finalMetadata.firmwareSignature,
+            files: [
+              files[0],
+              ...(msqChanged ? files.filter((entry) => entry.path.endsWith('/tune.msq')) : []),
+              ...(iniChanged && shouldIncludeIni
+                ? files.filter((entry) => entry.path.endsWith('/mainController.ini'))
+                : []),
+            ],
+            deletePaths:
+              originalHadIni && !shouldIncludeIni
+                ? [`${basePath}/mainController.ini`]
+                : [],
+            onProgress: (progress, detail = '') => {
+              setGitHubProgress(progress);
+              setGitHubProgressDetail(detail);
+            },
+          })
+        : await submitTuneToGitHub({
+            token: githubToken,
+            tuneId: finalMetadata.id,
+            title: finalMetadata.title,
+            firmwareSignature: finalMetadata.firmwareSignature,
+            files,
+            onProgress: (progress, detail = '') => {
+              setGitHubProgress(progress);
+              setGitHubProgressDetail(detail);
+            },
+          });
 
       setGitHubResult(result);
       setGitHubProgress('');
@@ -728,17 +893,41 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
   return (
     <main>
+      {editLoading && (
+        <section className="empty-state">
+          <h2>Loading published tune</h2>
+          <p>Reading its current metadata and calibration files.</p>
+        </section>
+      )}
+
+      {editLoadError && (
+        <section className="error-state">
+          <h2>Could not edit this tune</h2>
+          <p>{editLoadError}</p>
+          <button type="button" className="open-button button-reset" onClick={() => navigate('/')}>
+            Return to Tune Hub
+          </button>
+        </section>
+      )}
+
+      {!editLoading && !editLoadError && (
+      <>
       <header className="hub-hero submit-hero">
         <div>
           <p className="eyebrow">EpicEFI Tune Hub</p>
-          <h1>Prepare tune submission</h1>
+          <h1>{editId ? 'Edit published tune' : 'Prepare tune submission'}</h1>
           <p className="lede">
-            Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, and
-            publish it directly to the Tune Hub repository when you explicitly choose Upload to main.
+            {editId
+              ? 'Update the published metadata and optionally replace the MSQ or matching firmware definition.'
+              : 'Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, and publish it directly to the Tune Hub repository when you explicitly choose Upload to main.'}
           </p>
         </div>
-        <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/')}>
-          Back to Tune Hub
+        <button
+          type="button"
+          className="open-button secondary button-reset"
+          onClick={() => navigate(editId ? `/t/${encodeURIComponent(editId)}/info` : '/')}
+        >
+          {editId ? 'Back to tune' : 'Back to Tune Hub'}
         </button>
       </header>
 
@@ -755,7 +944,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
         <div className="submit-file-grid">
           <label className="submit-file-card">
-            <span>MSQ · required</span>
+            <span>MSQ · {editId ? 'current / replace' : 'required'}</span>
             <strong>{msqFile?.name || 'Choose EpicEFI tune'}</strong>
             <input
               type="file"
@@ -765,7 +954,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           </label>
 
           <label className="submit-file-card">
-            <span>mainController.ini · {registryStatus === 'found' ? 'optional' : 'required'}</span>
+            <span>mainController.ini · {editId ? 'current / replace' : registryStatus === 'found' ? 'optional' : 'required'}</span>
             <strong>{iniFile?.name || 'Choose matching INI'}</strong>
             <input
               type="file"
@@ -856,16 +1045,20 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             }}
             placeholder="Volvo B230FK 13T road tune"
           />
-          <TextField
-            label="Tune ID"
-            required
-            value={form.id}
-            onChange={(value) => {
-              setIdTouched(true);
-              update('id', slugify(value));
-            }}
-            placeholder="volvo-b230fk-13t-road"
-          />
+          <div className="submit-field-lock">
+            <TextField
+              label="Tune ID"
+              required
+              value={form.id}
+              onChange={(value) => {
+                setIdTouched(true);
+                update('id', slugify(value));
+              }}
+              placeholder="volvo-b230fk-13t-road"
+              disabled={Boolean(editId)}
+            />
+            {editId && <small>Published Tune IDs stay fixed so links and lineage remain stable.</small>}
+          </div>
           <TextField
             label="Author / uploader"
             required
@@ -893,10 +1086,18 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
               placeholder="Select validation…"
               ariaLabel="Validation badge"
               options={validationStatuses
-                .filter((status) => status !== 'EpicEFI Verified')
+                .filter(
+                  (status) =>
+                    status !== 'EpicEFI Verified'
+                    || form.validationStatus === 'EpicEFI Verified',
+                )
                 .map((status) => ({ value: status }))}
             />
-            <small>EpicEFI Verified cannot be self-assigned.</small>
+            <small>
+              {form.validationStatus === 'EpicEFI Verified' && editId
+                ? 'Existing EpicEFI Verified status is preserved unless you deliberately change it.'
+                : 'EpicEFI Verified cannot be self-assigned.'}
+            </small>
           </div>
 
           <div className="submit-field">
@@ -1100,7 +1301,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <div className="github-submit-heading">
             <div>
               <p className="eyebrow">Direct GitHub upload</p>
-              <h3>Publish tune directly to main</h3>
+              <h3>{editId ? 'Save changes directly to main' : 'Publish tune directly to main'}</h3>
             </div>
             <span className="badge">Token stays in page memory</span>
           </div>
@@ -1133,7 +1334,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           {githubResult && (
             <div className="github-success">
               <div>
-                <strong>Published directly to main</strong>
+                <strong>{editId ? 'Updated directly on main' : 'Published directly to main'}</strong>
                 <span>
                   {githubResult.targetRepository} · {githubResult.commitSha.slice(0, 12)}
                 </span>
@@ -1160,7 +1361,9 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
               }
               onClick={() => void submitToGitHub()}
             >
-              {githubSubmitting ? 'Uploading to main…' : 'Upload to main'}
+              {githubSubmitting
+                ? (editId ? 'Saving changes…' : 'Uploading to main…')
+                : (editId ? 'Save changes to main' : 'Upload to main')}
             </button>
             <a
               className="open-button secondary"
@@ -1180,7 +1383,11 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             disabled={validationErrors.length > 0 || packaging}
             onClick={() => void createPackage()}
           >
-            {packaging ? 'Creating package…' : 'Download submission ZIP instead'}
+            {packaging
+              ? 'Creating package…'
+              : editId
+                ? 'Download edited tune ZIP'
+                : 'Download submission ZIP instead'}
           </button>
           <a
             className="open-button secondary"
@@ -1201,8 +1408,12 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       </section>
 
       <footer>
-        Submission builder — local files remain in your browser unless you explicitly choose Upload to main.
+        {editId
+          ? 'Published tune editor — changes are written only when you explicitly choose Save changes to main.'
+          : 'Submission builder — local files remain in your browser unless you explicitly choose Upload to main.'}
       </footer>
+      </>
+      )}
     </main>
   );
 }

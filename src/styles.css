@@ -2125,3 +2125,31 @@ footer {
 .compare-selector-row .select-menu-button {
   min-height: 40px;
 }
+
+
+.submit-field-lock {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.submit-field-lock > .submit-field {
+  min-width: 0;
+}
+
+.submit-field-lock > small {
+  color: #7f929a;
+  font-size: .72rem;
+  line-height: 1.35;
+}
+
+.submit-field input:disabled {
+  opacity: .72;
+  cursor: not-allowed;
+  background: #0d1315;
+}
+
+.published-edit-button {
+  margin-top: 10px;
+  align-self: flex-start;
+}

@@ -220,6 +220,14 @@ export default function PublishedTunePage({
           <span>Published by</span>
           <strong>{metadata.author}</strong>
           <span>{metadata.publishedAt}</span>
+          {metadata.updatedAt && <span>Updated {metadata.updatedAt}</span>}
+          <button
+            type="button"
+            className="open-button secondary button-reset published-edit-button"
+            onClick={() => navigate(`/t/${encodeURIComponent(metadata.id)}/edit`)}
+          >
+            Edit tune
+          </button>
         </div>
       </header>
 

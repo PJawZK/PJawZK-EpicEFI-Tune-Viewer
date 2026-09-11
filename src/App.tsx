@@ -11,6 +11,7 @@ type Route =
   | { kind: 'hub' }
   | { kind: 'local' }
   | { kind: 'submit' }
+  | { kind: 'edit'; id: string }
   | { kind: 'definitions' }
   | { kind: 'submitDefinition' }
   | { kind: 'compare' }
@@ -35,6 +36,16 @@ function parseRoute(): Route {
     return { kind: 'submitDefinition' };
   }
   if (parts[0] === 'definitions') return { kind: 'definitions' };
+
+  if (parts[0] === 't' && parts[1] && parts[2] === 'edit') {
+    let id = parts[1];
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      // Keep the raw id so the editor can show a useful not-found state.
+    }
+    return { kind: 'edit', id };
+  }
 
   if (parts[0] === 't' && parts[1]) {
     let id = parts[1];
@@ -116,7 +127,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={route.kind === 'submit' ? 'active' : ''}
+            className={route.kind === 'submit' || route.kind === 'edit' ? 'active' : ''}
             onClick={() => navigate('/submit')}
           >
             Submit Tune
@@ -139,6 +150,7 @@ export default function App() {
       {route.kind === 'local' && <LocalTuneViewer />}
       {route.kind === 'compare' && <TuneCompare navigate={navigate} />}
       {route.kind === 'submit' && <SubmitTune navigate={navigate} />}
+      {route.kind === 'edit' && <SubmitTune navigate={navigate} editId={route.id} />}
       {route.kind === 'definitions' && <DefinitionHub navigate={navigate} />}
       {route.kind === 'submitDefinition' && <SubmitDefinition navigate={navigate} />}
       {route.kind === 'published' && (
