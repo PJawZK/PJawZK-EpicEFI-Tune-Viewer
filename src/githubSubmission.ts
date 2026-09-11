@@ -451,49 +451,86 @@ async function rollbackEditMutations(
   return failures;
 }
 
-async function assertLiveParentTune(
+async function readLiveTuneMetadata(
   token: string,
-  parentTuneId: string,
-  expectedMetadataText?: string,
-): Promise<void> {
-  const entries = await getTuneFolderEntries(token, parentTuneId);
+  tuneId: string,
+): Promise<{ raw: string; metadata: Record<string, unknown> }> {
+  const entries = await getTuneFolderEntries(token, tuneId);
   if (!entries) {
+    throw new Error(`Lineage tune "${tuneId}" no longer exists on ${BASE_BRANCH}.`);
+  }
+
+  assertCanonicalLiveFolder(tuneId, entries);
+  const existingNames = existingCanonicalTuneFiles(tuneId, entries);
+  if (!existingNames.has('metadata.json') || !existingNames.has('tune.msq')) {
     throw new Error(
-      `Lineage parent "${parentTuneId}" no longer exists on ${BASE_BRANCH}.`,
+      `Lineage tune "${tuneId}" is missing required metadata.json or tune.msq.`,
     );
   }
 
-  assertCanonicalLiveFolder(parentTuneId, entries);
-  const snapshot = await captureTuneSnapshot(token, parentTuneId, entries);
-  const metadata = snapshot.get(tuneFilePath(parentTuneId, 'metadata.json'));
-  if (!metadata) {
-    throw new Error(`Lineage parent "${parentTuneId}" is missing metadata.json.`);
-  }
+  const metadataPath = tuneFilePath(tuneId, 'metadata.json');
+  const raw = base64ToUtf8(await readContentBase64(token, metadataPath));
 
-  const liveRaw = base64ToUtf8(metadata.contentBase64);
-  let liveMetadata: unknown;
+  let metadata: unknown;
   try {
-    liveMetadata = JSON.parse(liveRaw) as unknown;
+    metadata = JSON.parse(raw) as unknown;
   } catch (error) {
     throw new Error(
-      `Lineage parent "${parentTuneId}" metadata is invalid JSON: `
+      `Lineage tune "${tuneId}" metadata is invalid JSON: `
       + `${error instanceof Error ? error.message : String(error)}`,
     );
   }
 
   if (
-    !liveMetadata
-    || typeof liveMetadata !== 'object'
-    || Array.isArray(liveMetadata)
-    || (liveMetadata as Record<string, unknown>).id !== parentTuneId
+    !metadata
+    || typeof metadata !== 'object'
+    || Array.isArray(metadata)
+    || (metadata as Record<string, unknown>).id !== tuneId
   ) {
     throw new Error(
-      `Lineage parent "${parentTuneId}" metadata identity no longer matches its folder.`,
+      `Lineage tune "${tuneId}" metadata identity no longer matches its folder.`,
     );
   }
 
-  if (expectedMetadataText) {
-    assertMetadataSnapshotMatches(liveRaw, expectedMetadataText, parentTuneId);
+  return {
+    raw,
+    metadata: metadata as Record<string, unknown>,
+  };
+}
+
+async function assertLiveLineage(
+  token: string,
+  tuneId: string,
+  parentTuneId: string,
+  expectedParentMetadataText?: string,
+): Promise<void> {
+  const seen = new Set([tuneId]);
+  let cursor: string | undefined = parentTuneId;
+  let first = true;
+
+  while (cursor) {
+    assertValidTuneId(cursor, 'Lineage parent Tune ID');
+    if (seen.has(cursor)) {
+      throw new Error(
+        `Live lineage would create a cycle through tune "${cursor}".`,
+      );
+    }
+    seen.add(cursor);
+
+    const live = await readLiveTuneMetadata(token, cursor);
+    if (first && expectedParentMetadataText) {
+      assertMetadataSnapshotMatches(live.raw, expectedParentMetadataText, cursor);
+    }
+    first = false;
+
+    const next = live.metadata.parentTuneId;
+    if (next === undefined) break;
+    if (typeof next !== 'string' || next.trim() === '') {
+      throw new Error(
+        `Lineage tune "${cursor}" has an invalid parentTuneId on ${BASE_BRANCH}.`,
+      );
+    }
+    cursor = next;
   }
 }
 
@@ -594,7 +631,7 @@ export async function updateTuneOnGitHub({
     throw new Error('Published tune metadata.json no longer exists on main.');
   }
 
-  if (!expectedMetadataText.trim()) {
+  if (typeof expectedMetadataText !== 'string' || !expectedMetadataText.trim()) {
     throw new Error('Edit collision check is missing the metadata snapshot loaded by this page.');
   }
   assertMetadataSnapshotMatches(
@@ -609,7 +646,11 @@ export async function updateTuneOnGitHub({
   }
 
   if (metadataIdentity.parentTuneId) {
-    await assertLiveParentTune(trimmedToken, metadataIdentity.parentTuneId);
+    await assertLiveLineage(
+      trimmedToken,
+      tuneId,
+      metadataIdentity.parentTuneId,
+    );
   }
 
   const finalNames = new Set<TuneFileName>(existingNames);
@@ -773,8 +814,9 @@ export async function submitTuneToGitHub({
   onProgress?.('checking-main', `${BASE_OWNER}/${BASE_REPO}`);
   await ensureTuneIdIsUnused(trimmedToken, tuneId);
   if (metadataIdentity.parentTuneId) {
-    await assertLiveParentTune(
+    await assertLiveLineage(
       trimmedToken,
+      tuneId,
       metadataIdentity.parentTuneId,
       expectedParentMetadataText,
     );
