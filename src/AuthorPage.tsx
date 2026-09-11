@@ -19,16 +19,6 @@ type AuthorPageProps = {
   navigate: (path: string) => void;
 };
 
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
-}
-
 function searchText(tune: PublishedTuneMetadata): string {
   return [
     tune.title,
@@ -133,7 +123,6 @@ function AuthorTuneCard({
             {engine}
           </button>
         )}
-        <span>{formatDate(tune.publishedAt)}</span>
         {tune.parentTuneId && <span>Revision of {tune.parentTuneId}</span>}
       </div>
 
