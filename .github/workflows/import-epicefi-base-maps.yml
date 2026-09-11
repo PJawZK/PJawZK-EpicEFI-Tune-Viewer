@@ -307,22 +307,6 @@ jobs:
               (folder / 'metadata.json').write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
               imported.append((profile['id'], profile['stem'], signature))
 
-          notes = """# EpicEFI base-map import
-
-Source: https://content.epicefi.com/base_maps/
-
-This directory's published tune folders include the complete root-level MSQ+INI pairs from the EpicEFI base-map library as of 2026-09-11. They are cataloged as **Base Tune / Unverified** profiles. Metadata is intentionally conservative and primarily inferred from the source filename plus any accompanying source TXT description.
-
-Not imported into the usable Tune Hub catalog:
-
-- `Dcwerx - Subaru 6-7 basemap.ini` — INI only; no matching MSQ is present in the base-map root.
-- `Immrpablo - KAMARO - k24a4 vtec killer no vvt - NA Ignition table.msq` — MSQ only; its signature (`rusEFI master.2024.10.18.uaefi.1537376161`) is not currently present in the Tune Viewer definition registry.
-- `incomplete/` — intentionally excluded because the source site labels it incomplete.
-- `partials/` — intentionally excluded because these are table/partial snippets rather than complete tune profiles.
-
-The original source labels are retained in each profile's notes for traceability.
-"""
-          (ROOT / 'BASE_MAP_IMPORT_NOTES.md').write_text(notes, encoding='utf-8')
 
           print(f'Imported {len(imported)} complete base-map profiles')
           for item in imported:
