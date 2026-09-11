@@ -102,6 +102,18 @@ Users without write permission cannot use direct-main publishing and can use the
 
 The ZIP option remains available for manual/offline submission.
 
+## Tune lineage and revisions
+
+Published tunes can now use `parentTuneId` as an explicit lineage relationship.
+
+A published tune page includes a **Lineage** tab showing its ancestor chain and all derived revisions.
+
+**Edit tune** keeps the same Tune ID and updates the existing published identity.
+
+**Create revision** clones the source tune into a new Tune ID, locks the source as its parent, resets validation to `Unverified`, and reuses the existing direct-main publication workflow.
+
+Repository validation rejects missing lineage parents, self-parenting and circular ancestry.
+
 ## Deliberately deferred
 
 - ECU write/control
@@ -135,7 +147,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.8.4 prototype.** Submit Tune now uses custom browser dropdowns throughout the app, provides a controlled supported-ECU target list, and publishes trusted-writer uploads through GitHub's Contents API for fine-grained-PAT compatibility. No runtime branch, fork or pull request is created. ZIP fallback remains available, and CI independently verifies MSQ/INI/metadata firmware signatures after publication.
+**V0.9 prototype.** Published tune pages now include tune lineage/history relationships and a first-class Create Revision workflow. Revisions create a new Tune ID linked to the source through `parentTuneId`, while Edit Tune continues to modify the existing identity. Repository validation rejects broken/self/circular lineage. V0.8 Tune Compare and the V0.8.x direct publish/edit workflow remain in place.
 
 
 ## Multi-firmware definition pipeline
