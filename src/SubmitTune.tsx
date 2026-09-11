@@ -49,6 +49,15 @@ type FormState = {
   parentTuneId: string;
 };
 
+const aspirationOptions = [
+  'Naturally Aspirated',
+  'Turbocharged',
+  'Supercharged',
+  'Twincharged',
+  'Forced induction (unspecified)',
+  'Other',
+] as const;
+
 const initialForm: FormState = {
   id: '',
   title: '',
@@ -107,6 +116,43 @@ function optionalNumber(value: string): number | undefined {
   if (!value.trim()) return undefined;
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function tuneValue(tune: ParsedTune, name: string): string {
+  return tune.constants.find((constant) => constant.name === name)?.value.trim() ?? '';
+}
+
+function parseBooleanish(value: string): boolean | null {
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'on', 'yes', 'enabled'].includes(normalized)) return true;
+  if (['false', '0', 'off', 'no', 'disabled'].includes(normalized)) return false;
+  return null;
+}
+
+function configuredFuelLabel(tune: ParsedTune): string {
+  const ethanolRaw = tuneValue(tune, 'defaultEthanolContent');
+  const ethanol = Number(ethanolRaw);
+  if (!Number.isFinite(ethanol) || ethanol < 0 || ethanol > 100) return '';
+
+  const rounded = Number.isInteger(ethanol) ? ethanol.toFixed(0) : ethanol.toFixed(1);
+  const flex = parseBooleanish(tuneValue(tune, 'flexEnabled'));
+  return flex === true ? `Flex fuel (fallback E${rounded})` : `E${rounded}`;
+}
+
+function configuredAspiration(tune: ParsedTune): string {
+  const forced = parseBooleanish(tuneValue(tune, 'isForcedInduction'));
+  if (forced === false) return 'Naturally Aspirated';
+  if (forced === true) return 'Forced induction (unspecified)';
+  return '';
+}
+
+function injectorFlowCc(tune: ParsedTune): string {
+  const unit = tuneValue(tune, 'injectorFlowAsMassFlow').toLowerCase();
+  const massFlow = ['grams per second', 'g/s', 'true', '1'].includes(unit);
+  if (massFlow) return '';
+
+  const flow = Number(tuneValue(tune, 'injector_flow'));
+  return Number.isFinite(flow) && flow > 0 ? String(flow) : '';
 }
 
 function optionalInteger(value: string): number | undefined {
@@ -179,6 +225,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
   const [catalogError, setCatalogError] = useState('');
   const [packaging, setPackaging] = useState(false);
   const [packageError, setPackageError] = useState('');
+  const [autoFilledFields, setAutoFilledFields] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -315,12 +362,31 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
       setTune(parsed);
 
       const inferredTarget = inferEcuTarget(parsed.details.signature);
-      if (inferredTarget) {
-        setForm((current) => ({
-          ...current,
-          ecuTarget: current.ecuTarget || inferredTarget,
-        }));
-      }
+      const candidates: Array<[keyof FormState, string, string]> = [
+        ['summary', parsed.details.tuneComment.trim(), 'Summary'],
+        ['ecuTarget', inferredTarget, 'ECU target'],
+        ['displacementLiters', tuneValue(parsed, 'displacement'), 'Displacement'],
+        ['cylinders', tuneValue(parsed, 'cylindersCount'), 'Cylinders'],
+        ['compressionRatio', tuneValue(parsed, 'compressionRatio'), 'Compression ratio'],
+        ['aspiration', configuredAspiration(parsed), 'Aspiration'],
+        ['fuel', configuredFuelLabel(parsed), 'Fuel'],
+        ['ignition', tuneValue(parsed, 'ignitionMode'), 'Ignition mode'],
+        ['injectorCc', injectorFlowCc(parsed), 'Injector flow'],
+      ];
+
+      const filled: string[] = [];
+      setForm((current) => {
+        const next = { ...current };
+
+        for (const [key, value, label] of candidates) {
+          if (!value || String(next[key]).trim()) continue;
+          next[key] = value as never;
+          filled.push(label);
+        }
+
+        return next;
+      });
+      setAutoFilledFields(filled);
 
       setRegistryStatus('checking');
       try {
@@ -468,6 +534,14 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
 
         {fileError && <div className="mismatch">{fileError}</div>}
 
+        {autoFilledFields.length > 0 && (
+          <div className="autofill-note">
+            <strong>Auto-filled from MSQ:</strong>
+            <span>{autoFilledFields.join(' · ')}</span>
+            <small>Only previously empty fields were filled; every value can still be edited.</small>
+          </div>
+        )}
+
         {tune && (
           <div className="details-grid submit-signature-grid">
             <div className="detail">
@@ -613,7 +687,21 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <TextField label="Displacement (L)" type="number" step="0.01" value={form.displacementLiters} onChange={(value) => update('displacementLiters', value)} />
           <TextField label="Cylinders" type="number" value={form.cylinders} onChange={(value) => update('cylinders', value)} />
 
-          <TextField label="Aspiration" value={form.aspiration} onChange={(value) => update('aspiration', value)} placeholder="Turbo / NA / Supercharged" />
+          <label className="submit-field">
+            <span>Aspiration</span>
+            <select
+              value={form.aspiration}
+              onChange={(event) => update('aspiration', event.target.value)}
+            >
+              <option value="">Select aspiration…</option>
+              {aspirationOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            {form.aspiration === 'Forced induction (unspecified)' && (
+              <small>EpicEFI reports forced induction but does not distinguish turbo from supercharger here.</small>
+            )}
+          </label>
           <TextField label="Compression ratio" type="number" step="0.01" value={form.compressionRatio} onChange={(value) => update('compressionRatio', value)} />
           <TextField label="Fuel" value={form.fuel} onChange={(value) => update('fuel', value)} placeholder="95 RON E10 / E85 / ..." />
           <TextField label="Ignition" value={form.ignition} onChange={(value) => update('ignition', value)} placeholder="Sequential / wasted spark / ..." />
