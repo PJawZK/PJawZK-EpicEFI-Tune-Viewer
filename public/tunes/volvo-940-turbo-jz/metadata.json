@@ -7,7 +7,7 @@
   "updatedAt": "2026-09-11",
   "ecuTarget": "MEGA144H7",
   "firmwareSignature": "rusEFI master.2026.08.26.MEGA144H7.2273317132",
-  "validationStatus": "Starts/Idles",
+  "validationStatus": "Road Tested",
   "classification": "Normal",
   "vehicle": {
     "make": "Volvo",
