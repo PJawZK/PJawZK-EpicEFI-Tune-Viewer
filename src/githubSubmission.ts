@@ -120,7 +120,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
 
 async function ensureTuneIdIsUnused(token: string, tuneId: string) {
   const path = `/repos/${BASE_OWNER}/${BASE_REPO}/contents/public/tunes/`
-    + `${encodeURIComponent(tuneId)}/metadata.json?ref=${encodeURIComponent(BASE_BRANCH)}`;
+    + `${encodeURIComponent(tuneId)}?ref=${encodeURIComponent(BASE_BRANCH)}`;
 
   const existing = await githubRequest<unknown | undefined>(
     token,
@@ -131,7 +131,7 @@ async function ensureTuneIdIsUnused(token: string, tuneId: string) {
 
   if (existing !== undefined) {
     throw new Error(
-      `Tune ID "${tuneId}" already exists on ${BASE_BRANCH}. Choose another tune ID.`,
+      `Tune folder "${tuneId}" already exists on ${BASE_BRANCH}. Choose another tune ID.`,
     );
   }
 }
