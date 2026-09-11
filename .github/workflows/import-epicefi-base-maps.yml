@@ -278,7 +278,7 @@ jobs:
               destination.write_bytes(data)
 
           sig_re = re.compile(br'<versionInfo\b[^>]*\bsignature\s*=\s*["\']([^"\']+)["\']', re.I)
-          ini_sig_re = re.compile(r'^\\s*signature\\s*=\\s*["\\']([^"\\']+)["\\']', re.I | re.M)
+          ini_sig_re = re.compile(r"^\\s*signature\\s*=\\s*[\\\"']([^\\\"']+)[\\\"']", re.I | re.M)
           firmware_paths = None
 
           def ini_signature(data):
