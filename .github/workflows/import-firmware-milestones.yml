@@ -202,7 +202,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
         run: |
           set -euo pipefail
-          npm ci
+          npm install --no-package-lock
           npm run build
 
           python3 - <<'PY'
