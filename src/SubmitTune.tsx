@@ -1066,7 +1066,6 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       const packaged = packageMetadata(metadata);
       const publicMetadata: PublishedTuneMetadata = {
         ...packaged,
-        validationStatus: 'Unverified',
         updatedAt: undefined,
       };
 
@@ -1547,7 +1546,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
                     : 'Publish tune without a GitHub account'}
                 </h3>
               </div>
-              <span className="badge">Published as Unverified</span>
+              <span className="badge">EpicEFI Verified reserved</span>
             </div>
 
             {publicSubmissionEnabled ? (
@@ -1555,8 +1554,10 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
                 <p className="submit-help">
                   This path does not require a GitHub account or repository access. The submission
                   service validates the MSQ, exact firmware definition, tune identity and lineage
-                  again before creating a new tune folder on main. Public submissions can create
-                  tunes or revisions, but cannot edit or overwrite an existing Tune ID.
+                  again before creating a new tune folder on main. Normal validation states are
+                  preserved, while EpicEFI Verified remains repository-controlled. Public
+                  submissions can create tunes or revisions, but cannot edit or overwrite an
+                  existing Tune ID.
                 </p>
 
                 <TurnstileWidget
