@@ -350,6 +350,28 @@ for (const tune of tunes) {
   if (tune.parentTuneId && !ids.has(tune.parentTuneId)) {
     fail(`${tune.id}: parentTuneId "${tune.parentTuneId}" does not exist in this catalog.`);
   }
+  if (tune.parentTuneId === tune.id) {
+    fail(`${tune.id}: parentTuneId cannot reference the tune itself.`);
+  }
+}
+
+const tuneById = new Map(tunes.map((tune) => [tune.id, tune]));
+for (const tune of tunes) {
+  const seen = new Set([tune.id]);
+  let cursor = tune;
+
+  while (cursor.parentTuneId) {
+    if (seen.has(cursor.parentTuneId)) {
+      fail(
+        `${tune.id}: circular tune lineage detected through "${cursor.parentTuneId}".`,
+      );
+    }
+
+    seen.add(cursor.parentTuneId);
+    const parent = tuneById.get(cursor.parentTuneId);
+    if (!parent) break;
+    cursor = parent;
+  }
 }
 
 tunes.sort((left, right) => {

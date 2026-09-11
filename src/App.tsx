@@ -12,16 +12,17 @@ type Route =
   | { kind: 'local' }
   | { kind: 'submit' }
   | { kind: 'edit'; id: string }
+  | { kind: 'revision'; id: string }
   | { kind: 'definitions' }
   | { kind: 'submitDefinition' }
   | { kind: 'compare' }
   | {
       kind: 'published';
       id: string;
-      tab: 'info' | 'tune' | 'download' | 'share';
+      tab: 'info' | 'tune' | 'lineage' | 'download' | 'share';
     };
 
-const publishedTabs = new Set(['info', 'tune', 'download', 'share']);
+const publishedTabs = new Set(['info', 'tune', 'lineage', 'download', 'share']);
 
 function parseRoute(): Route {
   const raw = window.location.hash.replace(/^#/, '') || '/';
@@ -47,6 +48,16 @@ function parseRoute(): Route {
     return { kind: 'edit', id };
   }
 
+  if (parts[0] === 't' && parts[1] && parts[2] === 'revision') {
+    let id = parts[1];
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      // Keep the raw id so the revision form can show a useful not-found state.
+    }
+    return { kind: 'revision', id };
+  }
+
   if (parts[0] === 't' && parts[1]) {
     let id = parts[1];
     try {
@@ -57,7 +68,7 @@ function parseRoute(): Route {
 
     const requestedTab = parts[2] ?? 'info';
     const tab = publishedTabs.has(requestedTab)
-      ? requestedTab as 'info' | 'tune' | 'download' | 'share'
+      ? requestedTab as 'info' | 'tune' | 'lineage' | 'download' | 'share'
       : 'info';
 
     return {
@@ -127,7 +138,13 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={route.kind === 'submit' || route.kind === 'edit' ? 'active' : ''}
+            className={
+              route.kind === 'submit'
+              || route.kind === 'edit'
+              || route.kind === 'revision'
+                ? 'active'
+                : ''
+            }
             onClick={() => navigate('/submit')}
           >
             Submit Tune
@@ -151,6 +168,7 @@ export default function App() {
       {route.kind === 'compare' && <TuneCompare navigate={navigate} />}
       {route.kind === 'submit' && <SubmitTune navigate={navigate} />}
       {route.kind === 'edit' && <SubmitTune navigate={navigate} editId={route.id} />}
+      {route.kind === 'revision' && <SubmitTune navigate={navigate} revisionOfId={route.id} />}
       {route.kind === 'definitions' && <DefinitionHub navigate={navigate} />}
       {route.kind === 'submitDefinition' && <SubmitDefinition navigate={navigate} />}
       {route.kind === 'published' && (

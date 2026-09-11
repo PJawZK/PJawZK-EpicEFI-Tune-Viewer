@@ -2153,3 +2153,149 @@ footer {
   margin-top: 10px;
   align-self: flex-start;
 }
+
+
+.published-owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.lineage-chain,
+.lineage-descendants {
+  display: grid;
+  gap: 8px;
+}
+
+.lineage-chain {
+  position: relative;
+}
+
+.lineage-chain::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 16px;
+  width: 1px;
+  background: #35444b;
+}
+
+.lineage-tune-card {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 12px 14px 12px 34px;
+  border: 1px solid #344149;
+  border-radius: 7px;
+  color: #cbd7dc;
+  background: #111719;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lineage-tune-card::before {
+  content: "";
+  position: absolute;
+  top: 17px;
+  left: 11px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid #70848d;
+  border-radius: 50%;
+  background: #111719;
+}
+
+.lineage-tune-card:hover,
+.lineage-tune-card:focus-visible {
+  border-color: #6b828c;
+  outline: none;
+}
+
+.lineage-tune-card.current {
+  border-color: #476653;
+  background: #121d17;
+}
+
+.lineage-tune-card.current::before {
+  border-color: #7ca98a;
+  background: #7ca98a;
+}
+
+.lineage-card-marker {
+  color: #80a2b2;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.lineage-tune-card strong {
+  color: #edf4f6;
+  font-size: .94rem;
+}
+
+.lineage-tune-card small {
+  color: #80939b;
+}
+
+.lineage-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.lineage-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px dashed #344149;
+  border-radius: 7px;
+  color: #889ba3;
+  background: #101618;
+}
+
+.lineage-empty p {
+  margin: 0;
+}
+
+.lineage-explainer {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lineage-explainer > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #303d43;
+  border-radius: 7px;
+  background: #101618;
+}
+
+.lineage-explainer strong {
+  color: #e2ebee;
+}
+
+.lineage-explainer span {
+  color: #82969f;
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 700px) {
+  .lineage-explainer {
+    grid-template-columns: 1fr;
+  }
+
+  .lineage-tune-card {
+    margin-left: 0 !important;
+  }
+}

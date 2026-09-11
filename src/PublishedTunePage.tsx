@@ -12,14 +12,17 @@ import type {
 import { parseMsq } from './msq';
 import TuneBrowser from './TuneBrowser';
 import {
+  findPublishedDescendants,
   findPublishedTune,
   loadPublishedText,
+  loadTuneAncestors,
   publicAssetUrl,
+  type TuneDescendant,
 } from './tuneLibrary';
 
 type PublishedTunePageProps = {
   id: string;
-  tab: 'info' | 'tune' | 'download' | 'share';
+  tab: 'info' | 'tune' | 'lineage' | 'download' | 'share';
   navigate: (path: string) => void;
 };
 
@@ -40,6 +43,41 @@ function InfoCell({
   );
 }
 
+function LineageTuneCard({
+  tune,
+  current = false,
+  depth = 0,
+  navigate,
+}: {
+  tune: PublishedTuneMetadata;
+  current?: boolean;
+  depth?: number;
+  navigate: (path: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={`lineage-tune-card ${current ? 'current' : ''}`}
+      style={depth > 0 ? { marginLeft: `${Math.min(depth, 5) * 18}px` } : undefined}
+      onClick={() => navigate(`/t/${encodeURIComponent(tune.id)}/lineage`)}
+    >
+      <span className="lineage-card-marker">
+        {current ? 'Current' : depth > 0 ? `Revision +${depth}` : 'Ancestor'}
+      </span>
+      <strong>{tune.title}</strong>
+      <small>
+        {tune.versionLabel || tune.id}
+        {' · '}
+        {tune.publishedAt}
+      </small>
+      <span className="lineage-card-badges">
+        <span className="badge">{tune.classification}</span>
+        <span className="badge badge-ok">{tune.validationStatus}</span>
+      </span>
+    </button>
+  );
+}
+
 function routeFor(id: string, tab: PublishedTunePageProps['tab']): string {
   return `/t/${encodeURIComponent(id)}/${tab}`;
 }
@@ -57,6 +95,10 @@ export default function PublishedTunePage({
   const [tune, setTune] = useState<ParsedTune | null>(null);
   const [ini, setIni] = useState<ParsedIni | null>(null);
   const [definitionSource, setDefinitionSource] = useState('');
+  const [ancestors, setAncestors] = useState<PublishedTuneMetadata[]>([]);
+  const [descendants, setDescendants] = useState<TuneDescendant[]>([]);
+  const [lineageLoading, setLineageLoading] = useState(false);
+  const [lineageError, setLineageError] = useState('');
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -155,6 +197,47 @@ export default function PublishedTunePage({
     };
   }, [metadata, tab]);
 
+  useEffect(() => {
+    if (tab !== 'lineage' || !metadata) return;
+
+    let active = true;
+    setLineageLoading(true);
+    setLineageError('');
+    setAncestors([]);
+    setDescendants([]);
+
+    Promise.all([
+      loadTuneAncestors(metadata),
+      findPublishedDescendants(metadata.id),
+    ])
+      .then(async ([ancestorResult, descendantResult]) => {
+        if (!active) return;
+
+        const liveDescendants = await Promise.all(
+          descendantResult.map(async (entry) => ({
+            depth: entry.depth,
+            tune: await findPublishedTune(entry.tune.id) ?? entry.tune,
+          })),
+        );
+
+        if (!active) return;
+        setAncestors(ancestorResult);
+        setDescendants(liveDescendants);
+        setLineageLoading(false);
+      })
+      .catch((caught) => {
+        if (!active) return;
+        setLineageError(
+          caught instanceof Error ? caught.message : 'Unable to load tune lineage.',
+        );
+        setLineageLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [metadata, tab]);
+
   const vehicleLabel = useMemo(() => {
     if (!metadata) return '';
     return [
@@ -221,18 +304,27 @@ export default function PublishedTunePage({
           <strong>{metadata.author}</strong>
           <span>{metadata.publishedAt}</span>
           {metadata.updatedAt && <span>Updated {metadata.updatedAt}</span>}
-          <button
-            type="button"
-            className="open-button secondary button-reset published-edit-button"
-            onClick={() => navigate(`/t/${encodeURIComponent(metadata.id)}/edit`)}
-          >
-            Edit tune
-          </button>
+          <div className="published-owner-actions">
+            <button
+              type="button"
+              className="open-button secondary button-reset published-edit-button"
+              onClick={() => navigate(`/t/${encodeURIComponent(metadata.id)}/edit`)}
+            >
+              Edit tune
+            </button>
+            <button
+              type="button"
+              className="open-button button-reset published-edit-button"
+              onClick={() => navigate(`/t/${encodeURIComponent(metadata.id)}/revision`)}
+            >
+              Create revision
+            </button>
+          </div>
         </div>
       </header>
 
       <nav className="published-tabs" aria-label="Published tune views">
-        {(['info', 'tune', 'download', 'share'] as const).map((candidate) => (
+        {(['info', 'tune', 'lineage', 'download', 'share'] as const).map((candidate) => (
           <button
             type="button"
             key={candidate}
@@ -354,6 +446,104 @@ export default function PublishedTunePage({
                   </div>
                 </div>
                 <TuneBrowser ini={ini} tune={tune} />
+              </section>
+            </>
+          )}
+        </>
+      )}
+
+      {tab === 'lineage' && (
+        <>
+          {lineageLoading && (
+            <section className="empty-state">
+              <h2>Loading tune lineage</h2>
+              <p>Resolving this tune's ancestors and derived revisions.</p>
+            </section>
+          )}
+
+          {lineageError && (
+            <section className="error-state">
+              <h2>Could not resolve lineage</h2>
+              <p>{lineageError}</p>
+            </section>
+          )}
+
+          {!lineageLoading && !lineageError && (
+            <>
+              <section className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Tune lineage</p>
+                    <h2>History chain</h2>
+                  </div>
+                  <span className="badge">
+                    {ancestors.length
+                      ? `${ancestors.length} ancestor${ancestors.length === 1 ? '' : 's'}`
+                      : 'Root tune'}
+                  </span>
+                </div>
+
+                <div className="lineage-chain">
+                  {ancestors.map((ancestor) => (
+                    <LineageTuneCard
+                      key={ancestor.id}
+                      tune={ancestor}
+                      navigate={navigate}
+                    />
+                  ))}
+                  <LineageTuneCard
+                    tune={metadata}
+                    current
+                    navigate={navigate}
+                  />
+                </div>
+              </section>
+
+              <section className="panel">
+                <div className="panel-heading">
+                  <div>
+                    <p className="eyebrow">Derived tunes</p>
+                    <h2>Revisions based on this tune</h2>
+                  </div>
+                  <span className="badge">
+                    {descendants.length} derived
+                  </span>
+                </div>
+
+                {descendants.length === 0 ? (
+                  <div className="lineage-empty">
+                    <p>No published revisions currently descend from this tune.</p>
+                    <button
+                      type="button"
+                      className="open-button button-reset"
+                      onClick={() => navigate(`/t/${encodeURIComponent(metadata.id)}/revision`)}
+                    >
+                      Create first revision
+                    </button>
+                  </div>
+                ) : (
+                  <div className="lineage-descendants">
+                    {descendants.map(({ tune: descendant, depth }) => (
+                      <LineageTuneCard
+                        key={descendant.id}
+                        tune={descendant}
+                        depth={depth}
+                        navigate={navigate}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="panel lineage-explainer">
+                <div>
+                  <strong>Edit tune</strong>
+                  <span>Changes this existing Tune ID and keeps the same lineage identity.</span>
+                </div>
+                <div>
+                  <strong>Create revision</strong>
+                  <span>Creates a new Tune ID with this tune recorded as its parent.</span>
+                </div>
               </section>
             </>
           )}

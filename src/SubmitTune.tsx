@@ -34,6 +34,7 @@ import { mergeEcuTargets } from './ecuTargets';
 type SubmitTuneProps = {
   navigate: (path: string) => void;
   editId?: string;
+  revisionOfId?: string;
 };
 
 type FormState = {
@@ -159,6 +160,32 @@ const initialForm: FormState = {
   versionLabel: '',
   parentTuneId: '',
 };
+
+function nextRevisionId(parentId: string, ids: Set<string>): string {
+  for (let revision = 2; revision < 1000; revision += 1) {
+    const candidate = `${parentId}-r${revision}`;
+    if (!ids.has(candidate)) return candidate;
+  }
+  return `${parentId}-revision-${Date.now()}`;
+}
+
+function lineageWouldCycle(
+  tuneId: string,
+  parentTuneId: string,
+  parentById: Map<string, string>,
+): boolean {
+  if (!tuneId || !parentTuneId) return false;
+  if (tuneId === parentTuneId) return true;
+
+  const seen = new Set<string>([tuneId]);
+  let cursor = parentTuneId;
+  while (cursor) {
+    if (seen.has(cursor)) return true;
+    seen.add(cursor);
+    cursor = parentById.get(cursor) ?? '';
+  }
+  return false;
+}
 
 function slugify(value: string): string {
   return value
@@ -326,9 +353,11 @@ function TextField({
   );
 }
 
-export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
+export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTuneProps) {
   const [form, setForm] = useState<FormState>(initialForm);
-  const [editLoading, setEditLoading] = useState(Boolean(editId));
+  const sourceTuneId = editId ?? revisionOfId;
+  const isRevision = Boolean(revisionOfId);
+  const [editLoading, setEditLoading] = useState(Boolean(sourceTuneId));
   const [editLoadError, setEditLoadError] = useState('');
   const [originalPublishedAt, setOriginalPublishedAt] = useState('');
   const [originalHadIni, setOriginalHadIni] = useState(false);
@@ -343,6 +372,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
   const [registryEntry, setRegistryEntry] = useState<DefinitionRegistryEntry | null>(null);
   const [registryStatus, setRegistryStatus] = useState<'idle' | 'checking' | 'found' | 'missing'>('idle');
   const [existingIds, setExistingIds] = useState<Set<string>>(new Set());
+  const [parentById, setParentById] = useState<Map<string, string>>(new Map());
   const [registryTargets, setRegistryTargets] = useState<string[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [packaging, setPackaging] = useState(false);
@@ -362,6 +392,11 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
       .then((index) => {
         if (!active) return;
         setExistingIds(new Set(index.tunes.map((entry) => entry.id)));
+        setParentById(new Map(
+          index.tunes
+            .filter((entry) => Boolean(entry.parentTuneId))
+            .map((entry) => [entry.id, entry.parentTuneId ?? '']),
+        ));
       })
       .catch((caught) => {
         if (!active) return;
@@ -391,7 +426,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
   }, []);
 
   useEffect(() => {
-    if (!editId) {
+    if (!sourceTuneId) {
       setEditLoading(false);
       return;
     }
@@ -401,9 +436,9 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
     setEditLoadError('');
 
     const loadPublishedForEdit = async () => {
-      const published = await findPublishedTune(editId);
+      const published = await findPublishedTune(sourceTuneId);
       if (!published) {
-        throw new Error(`Published tune "${editId}" was not found.`);
+        throw new Error(`Published tune "${sourceTuneId}" was not found.`);
       }
 
       const msqRaw = await loadPublishedText(published.files.msq);
@@ -435,9 +470,24 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
       const registry = await findRegisteredDefinition(parsedTune.details.signature);
 
       if (!active) return;
-      setForm(formFromMetadata(published));
+
+      if (isRevision) {
+        const index = await loadTuneIndex();
+        if (!active) return;
+        const ids = new Set(index.tunes.map((entry) => entry.id));
+        const revisionForm = formFromMetadata(published);
+        revisionForm.id = nextRevisionId(published.id, ids);
+        revisionForm.parentTuneId = published.id;
+        revisionForm.validationStatus = 'Unverified';
+        revisionForm.versionLabel = '';
+        setForm(revisionForm);
+        setOriginalPublishedAt('');
+      } else {
+        setForm(formFromMetadata(published));
+        setOriginalPublishedAt(published.publishedAt);
+      }
+
       setIdTouched(true);
-      setOriginalPublishedAt(published.publishedAt);
       setOriginalHadIni(Boolean(published.files.ini));
       setMsqFile(new File([msqRaw], 'tune.msq', { type: 'application/xml' }));
       setTune(parsedTune);
@@ -454,7 +504,9 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
     loadPublishedForEdit().catch((caught) => {
       if (!active) return;
       setEditLoadError(
-        caught instanceof Error ? caught.message : 'Unable to load this published tune for editing.',
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to load this published tune.',
       );
       setEditLoading(false);
     });
@@ -462,7 +514,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
     return () => {
       active = false;
     };
-  }, [editId]);
+  }, [isRevision, sourceTuneId]);
 
   const signatureMatch = Boolean(
     tune && ini && tune.details.signature && tune.details.signature === ini.signature,
@@ -594,18 +646,42 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
     } else if (existingIds.has(form.id.trim()) && form.id.trim() !== editId) {
       errors.push('Tune ID already exists in the public catalog.');
     }
+
     if (!form.author.trim()) errors.push('Author is required.');
     if (!form.ecuTarget.trim()) errors.push('ECU target is required.');
     if (!form.validationStatus) errors.push('Select a validation badge.');
     if (!form.classification) errors.push('Select a tune classification.');
-    if (
-      form.parentTuneId.trim()
-      && !existingIds.has(form.parentTuneId.trim())
-    ) {
-      errors.push('Parent tune ID must already exist in the public catalog.');
+
+    const parentId = form.parentTuneId.trim();
+    if (parentId) {
+      if (parentId === form.id.trim()) {
+        errors.push('A tune cannot be its own lineage parent.');
+      } else if (!catalogError && !existingIds.has(parentId)) {
+        errors.push(`Parent tune "${parentId}" does not exist in the public catalog.`);
+      } else if (lineageWouldCycle(form.id.trim(), parentId, parentById)) {
+        errors.push('This parent selection would create circular tune lineage.');
+      }
     }
+
+    if (isRevision && form.parentTuneId !== revisionOfId) {
+      errors.push('Revision parent is fixed to the source tune.');
+    }
+
     return errors;
-  }, [definitionReady, editId, existingIds, form, ini, msqFile, signatureMatch, tune]);
+  }, [
+    catalogError,
+    definitionReady,
+    editId,
+    existingIds,
+    form,
+    ini,
+    isRevision,
+    msqFile,
+    parentById,
+    revisionOfId,
+    signatureMatch,
+    tune,
+  ]);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -917,19 +993,31 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
       <header className="hub-hero submit-hero">
         <div>
           <p className="eyebrow">EpicEFI Tune Hub</p>
-          <h1>{editId ? 'Edit published tune' : 'Prepare tune submission'}</h1>
+          <h1>
+            {editId
+              ? 'Edit published tune'
+              : isRevision
+                ? 'Create tune revision'
+                : 'Prepare tune submission'}
+          </h1>
           <p className="lede">
             {editId
               ? 'Update the published metadata and optionally replace the MSQ or matching firmware definition.'
-              : 'Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, and publish it directly to the Tune Hub repository when you explicitly choose Upload to main.'}
+              : isRevision
+                ? 'Create a new published tune derived from this source while preserving its lineage.'
+                : 'Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, and publish it directly to the Tune Hub repository when you explicitly choose Upload to main.'}
           </p>
         </div>
         <button
           type="button"
           className="open-button secondary button-reset"
-          onClick={() => navigate(editId ? `/t/${encodeURIComponent(editId)}/info` : '/')}
+          onClick={() => navigate(
+            sourceTuneId
+              ? `/t/${encodeURIComponent(sourceTuneId)}/info`
+              : '/',
+          )}
         >
-          {editId ? 'Back to tune' : 'Back to Tune Hub'}
+          {sourceTuneId ? 'Back to source tune' : 'Back to Tune Hub'}
         </button>
       </header>
 
@@ -946,7 +1034,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
 
         <div className="submit-file-grid">
           <label className="submit-file-card">
-            <span>MSQ · {editId ? 'current / replace' : 'required'}</span>
+            <span>MSQ · {sourceTuneId ? 'source / replace' : 'required'}</span>
             <strong>{msqFile?.name || 'Choose EpicEFI tune'}</strong>
             <input
               type="file"
@@ -956,7 +1044,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
           </label>
 
           <label className="submit-file-card">
-            <span>mainController.ini · {editId ? 'current / replace' : registryStatus === 'found' ? 'optional' : 'required'}</span>
+            <span>mainController.ini · {sourceTuneId ? 'source / replace' : registryStatus === 'found' ? 'optional' : 'required'}</span>
             <strong>{iniFile?.name || 'Choose matching INI'}</strong>
             <input
               type="file"
@@ -1060,6 +1148,7 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
               disabled={Boolean(editId)}
             />
             {editId && <small>Published Tune IDs stay fixed so links and lineage remain stable.</small>}
+            {isRevision && <small>A new revision ID is suggested automatically; change it before publishing if desired.</small>}
           </div>
           <TextField
             label="Author / uploader"
@@ -1219,7 +1308,16 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
           <TextField label="Torque (Nm)" type="number" value={form.torqueNm} onChange={(value) => update('torqueNm', value)} />
           <TextField label="Boost (bar)" type="number" step="0.01" value={form.boostBar} onChange={(value) => update('boostBar', value)} />
           <TextField label="Version label" value={form.versionLabel} onChange={(value) => update('versionLabel', value)} placeholder="v1 / 2026-09 / ..." />
-          <TextField label="Parent tune ID" value={form.parentTuneId} onChange={(value) => update('parentTuneId', slugify(value))} placeholder="Optional lineage parent" />
+          <div className="submit-field-lock">
+            <TextField
+              label="Parent tune ID"
+              value={form.parentTuneId}
+              onChange={(value) => update('parentTuneId', slugify(value))}
+              placeholder="Optional lineage parent"
+              disabled={isRevision}
+            />
+            {isRevision && <small>Locked to the source tune for this revision.</small>}
+          </div>
           <TextField label="Tags" value={form.tags} onChange={(value) => update('tags', value)} placeholder="turbo, road, 13t, flex-fuel" />
         </div>
 
@@ -1303,7 +1401,13 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
           <div className="github-submit-heading">
             <div>
               <p className="eyebrow">Direct GitHub upload</p>
-              <h3>{editId ? 'Save changes directly to main' : 'Publish tune directly to main'}</h3>
+              <h3>
+                {editId
+                  ? 'Save changes directly to main'
+                  : isRevision
+                    ? 'Publish revision directly to main'
+                    : 'Publish tune directly to main'}
+              </h3>
             </div>
             <span className="badge">Token stays in page memory</span>
           </div>
@@ -1336,7 +1440,13 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
           {githubResult && (
             <div className="github-success">
               <div>
-                <strong>{editId ? 'Updated directly on main' : 'Published directly to main'}</strong>
+                <strong>
+                  {editId
+                    ? 'Updated directly on main'
+                    : isRevision
+                      ? 'Revision published directly to main'
+                      : 'Published directly to main'}
+                </strong>
                 <span>
                   {githubResult.targetRepository} · {githubResult.commitSha.slice(0, 12)}
                 </span>
@@ -1364,8 +1474,16 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
               onClick={() => void submitToGitHub()}
             >
               {githubSubmitting
-                ? (editId ? 'Saving changes…' : 'Uploading to main…')
-                : (editId ? 'Save changes to main' : 'Upload to main')}
+                ? (editId
+                    ? 'Saving changes…'
+                    : isRevision
+                      ? 'Publishing revision…'
+                      : 'Uploading to main…')
+                : (editId
+                    ? 'Save changes to main'
+                    : isRevision
+                      ? 'Publish revision to main'
+                      : 'Upload to main')}
             </button>
             <a
               className="open-button secondary"
@@ -1389,7 +1507,9 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
               ? 'Creating package…'
               : editId
                 ? 'Download edited tune ZIP'
-                : 'Download submission ZIP instead'}
+                : isRevision
+                  ? 'Download revision ZIP'
+                  : 'Download submission ZIP instead'}
           </button>
           <a
             className="open-button secondary"
@@ -1412,7 +1532,9 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
       <footer>
         {editId
           ? 'Published tune editor — changes are written only when you explicitly choose Save changes to main.'
-          : 'Submission builder — local files remain in your browser unless you explicitly choose Upload to main.'}
+          : isRevision
+            ? 'Revision builder — the source tune remains unchanged; publishing creates a new linked Tune ID.'
+            : 'Submission builder — local files remain in your browser unless you explicitly choose Upload to main.'}
       </footer>
       </>
       )}
