@@ -43,32 +43,66 @@ function InfoCell({
   );
 }
 
+function formatHistoryDate(value: string | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
 function LineageTuneCard({
   tune,
   current = false,
+  root = false,
+  latest = false,
   depth = 0,
   navigate,
 }: {
   tune: PublishedTuneMetadata;
   current?: boolean;
+  root?: boolean;
+  latest?: boolean;
   depth?: number;
   navigate: (path: string) => void;
 }) {
+  const marker = current
+    ? 'Current'
+    : depth > 0
+      ? `Revision +${depth}`
+      : 'Ancestor';
+
   return (
     <button
       type="button"
-      className={`lineage-tune-card ${current ? 'current' : ''}`}
+      className={[
+        'lineage-tune-card',
+        current ? 'current' : '',
+        root ? 'root' : '',
+        latest ? 'latest' : '',
+      ].filter(Boolean).join(' ')}
       style={depth > 0 ? { marginLeft: `${Math.min(depth, 5) * 18}px` } : undefined}
       onClick={() => navigate(`/t/${encodeURIComponent(tune.id)}/lineage`)}
     >
-      <span className="lineage-card-marker">
-        {current ? 'Current' : depth > 0 ? `Revision +${depth}` : 'Ancestor'}
+      <span className="lineage-card-marker-row">
+        <span className="lineage-card-marker">{marker}</span>
+        {root && <span className="lineage-state-pill">Root</span>}
+        {latest && <span className="lineage-state-pill latest">Latest</span>}
       </span>
       <strong>{tune.title}</strong>
       <small>
         {tune.versionLabel || tune.id}
-        {' · '}
-        {tune.publishedAt}
+        {' · Published '}
+        {formatHistoryDate(tune.publishedAt)}
+        {tune.updatedAt && (
+          <>
+            {' · Edited '}
+            {formatHistoryDate(tune.updatedAt)}
+          </>
+        )}
       </small>
       <span className="lineage-card-badges">
         <span className="badge">{tune.classification}</span>
@@ -247,6 +281,30 @@ export default function PublishedTunePage({
       metadata.vehicle?.trim,
     ].filter(Boolean).join(' ');
   }, [metadata]);
+
+  const directChildren = useMemo(
+    () => descendants
+      .filter((entry) => entry.depth === 1)
+      .map((entry) => entry.tune),
+    [descendants],
+  );
+
+  const descendantParentIds = useMemo(
+    () => new Set(
+      descendants
+        .map((entry) => entry.tune.parentTuneId)
+        .filter((value): value is string => Boolean(value)),
+    ),
+    [descendants],
+  );
+
+  const previousRevision = ancestors.length
+    ? ancestors[ancestors.length - 1]
+    : null;
+  const rootTune = metadata
+    ? (ancestors[0] ?? metadata)
+    : null;
+  const currentIsLatest = descendants.length === 0;
 
   const copyShareLink = async () => {
     try {
@@ -476,30 +534,121 @@ export default function PublishedTunePage({
 
           {!lineageLoading && !lineageError && (
             <>
-              <section className="panel">
+              <section className="panel lineage-history-panel">
                 <div className="panel-heading">
                   <div>
-                    <p className="eyebrow">Tune lineage</p>
-                    <h2>History chain</h2>
+                    <p className="eyebrow">Revision history</p>
+                    <h2>Active lineage chain</h2>
                   </div>
-                  <span className="badge">
-                    {ancestors.length
-                      ? `${ancestors.length} ancestor${ancestors.length === 1 ? '' : 's'}`
-                      : 'Root tune'}
+                  <span className={`badge ${currentIsLatest ? 'badge-ok' : ''}`}>
+                    {currentIsLatest
+                      ? 'Latest revision'
+                      : `${descendants.length} newer descendant${descendants.length === 1 ? '' : 's'}`}
                   </span>
                 </div>
 
+                <div className="lineage-history-summary">
+                  <div>
+                    <span>Root tune</span>
+                    <strong>{rootTune?.versionLabel || rootTune?.title || metadata.id}</strong>
+                    <small>{rootTune?.id}</small>
+                  </div>
+                  <div>
+                    <span>Chain position</span>
+                    <strong>{ancestors.length + 1}</strong>
+                    <small>{ancestors.length ? `${ancestors.length} previous revision${ancestors.length === 1 ? '' : 's'}` : 'Root of this lineage'}</small>
+                  </div>
+                  <div>
+                    <span>Published</span>
+                    <strong>{formatHistoryDate(metadata.publishedAt)}</strong>
+                    <small>New Tune ID created</small>
+                  </div>
+                  <div>
+                    <span>Same-ID edit</span>
+                    <strong>{metadata.updatedAt ? formatHistoryDate(metadata.updatedAt) : 'None recorded'}</strong>
+                    <small>{metadata.updatedAt ? 'Existing Tune ID updated' : 'No later edit date'}</small>
+                  </div>
+                </div>
+
+                <div className="lineage-navigation">
+                  <div className="lineage-nav-side">
+                    {previousRevision ? (
+                      <button
+                        type="button"
+                        className="lineage-nav-button button-reset"
+                        onClick={() => navigate(`/t/${encodeURIComponent(previousRevision.id)}/lineage`)}
+                      >
+                        <span>← Previous revision</span>
+                        <strong>{previousRevision.versionLabel || previousRevision.title}</strong>
+                      </button>
+                    ) : (
+                      <div className="lineage-nav-static">
+                        <span>Previous revision</span>
+                        <strong>Root tune</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="lineage-current-state">
+                    <span>Current Tune ID</span>
+                    <strong>{metadata.versionLabel || metadata.id}</strong>
+                    <small>{metadata.id}</small>
+                  </div>
+
+                  <div className="lineage-nav-side next">
+                    {directChildren.length === 1 ? (
+                      <button
+                        type="button"
+                        className="lineage-nav-button button-reset"
+                        onClick={() => navigate(`/t/${encodeURIComponent(directChildren[0].id)}/lineage`)}
+                      >
+                        <span>Next revision →</span>
+                        <strong>{directChildren[0].versionLabel || directChildren[0].title}</strong>
+                      </button>
+                    ) : directChildren.length > 1 ? (
+                      <div className="lineage-nav-static">
+                        <span>Next revisions</span>
+                        <strong>{directChildren.length} branches</strong>
+                      </div>
+                    ) : (
+                      <div className="lineage-nav-static latest">
+                        <span>Next revision</span>
+                        <strong>Latest</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {directChildren.length > 1 && (
+                  <div className="lineage-next-branches">
+                    {directChildren.map((child) => (
+                      <button
+                        type="button"
+                        key={child.id}
+                        className="lineage-branch-link button-reset"
+                        onClick={() => navigate(`/t/${encodeURIComponent(child.id)}/lineage`)}
+                      >
+                        <span>{child.versionLabel || child.id}</span>
+                        <strong>{child.title}</strong>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="lineage-chain">
-                  {ancestors.map((ancestor) => (
+                  {ancestors.map((ancestor, index) => (
                     <LineageTuneCard
                       key={ancestor.id}
                       tune={ancestor}
+                      root={index === 0}
                       navigate={navigate}
                     />
                   ))}
                   <LineageTuneCard
                     tune={metadata}
                     current
+                    root={ancestors.length === 0}
+                    latest={currentIsLatest}
                     navigate={navigate}
                   />
                 </div>
@@ -534,6 +683,7 @@ export default function PublishedTunePage({
                         key={descendant.id}
                         tune={descendant}
                         depth={depth}
+                        latest={!descendantParentIds.has(descendant.id)}
                         navigate={navigate}
                       />
                     ))}
@@ -543,12 +693,18 @@ export default function PublishedTunePage({
 
               <section className="panel lineage-explainer">
                 <div>
-                  <strong>Edit tune</strong>
-                  <span>Changes this existing Tune ID and keeps the same lineage identity.</span>
+                  <strong>Same-ID edit</strong>
+                  <span>
+                    Edit Tune updates the existing Tune ID. Its original publication date remains,
+                    while the latest edit is represented by <code>updatedAt</code>.
+                  </span>
                 </div>
                 <div>
-                  <strong>Create revision</strong>
-                  <span>Creates a new Tune ID with this tune recorded as its parent.</span>
+                  <strong>New revision</strong>
+                  <span>
+                    Create Revision publishes a new Tune ID with <code>parentTuneId</code> pointing
+                    to its source. That new identity appears in this lineage history.
+                  </span>
                 </div>
               </section>
             </>
