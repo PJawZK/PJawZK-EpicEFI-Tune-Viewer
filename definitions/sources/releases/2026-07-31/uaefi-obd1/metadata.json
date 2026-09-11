@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "uaefi-obd1",
+  "release": "2026-07-31",
+  "label": "uaefi-obd1 · 2026-07-31",
+  "source": "EpicEFI firmware milestone 2026-07-31 · rusefi_bundle_uaefi-obd1.zip",
+  "expectedSignature": "rusEFI master.2026.07.31.uaefi-obd1.1493174455"
+}
