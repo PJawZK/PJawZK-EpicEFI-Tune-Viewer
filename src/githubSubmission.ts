@@ -290,6 +290,21 @@ async function getContentEntry(
   return entry ?? null;
 }
 
+async function resolvedWriteSha(
+  token: string,
+  path: string,
+  result: ContentWriteResult,
+): Promise<string> {
+  if (result.content?.sha) return result.content.sha;
+
+  const current = await getContentEntry(token, path);
+  if (current?.type === 'file') return current.sha;
+
+  throw new Error(
+    `GitHub accepted a write for "${path}" but did not return a resulting file identity.`,
+  );
+}
+
 async function readGitBlobBase64(token: string, sha: string): Promise<string> {
   const blob = await githubRequest<GitBlob>(
     token,
@@ -494,6 +509,7 @@ export async function updateTuneOnGitHub({
   title,
   firmwareSignature,
   files,
+  expectedMetadataText,
   deletePaths = [],
   onProgress,
 }: {
@@ -502,6 +518,7 @@ export async function updateTuneOnGitHub({
   title: string;
   firmwareSignature: string;
   files: GitHubSubmissionFile[];
+  expectedMetadataText: string;
   deletePaths?: string[];
   onProgress?: (progress: GitHubSubmissionProgress, detail?: string) => void;
 }): Promise<GitHubSubmissionResult> {
@@ -553,18 +570,35 @@ export async function updateTuneOnGitHub({
     );
   }
 
+  assertCanonicalLiveFolder(tuneId, existingEntries);
+
   const byPath = new Map(
     existingEntries.map((entry) => [entry.path, entry]),
   );
+  const snapshot = await captureTuneSnapshot(trimmedToken, tuneId, existingEntries);
 
   const metadataEntry = byPath.get(metadataPath);
-  if (!metadataEntry || metadataEntry.type !== 'file') {
+  const metadataBefore = snapshot.get(metadataPath);
+  if (!metadataEntry || metadataEntry.type !== 'file' || !metadataBefore) {
     throw new Error('Published tune metadata.json no longer exists on main.');
   }
+
+  if (!expectedMetadataText.trim()) {
+    throw new Error('Edit collision check is missing the metadata snapshot loaded by this page.');
+  }
+  assertMetadataSnapshotMatches(
+    base64ToUtf8(metadataBefore.contentBase64),
+    expectedMetadataText,
+    tuneId,
+  );
 
   const existingNames = existingCanonicalTuneFiles(tuneId, existingEntries);
   if (!existingNames.has('tune.msq')) {
     throw new Error('Published tune tune.msq no longer exists on main.');
+  }
+
+  if (metadataIdentity.parentTuneId) {
+    await assertLiveParentTune(trimmedToken, metadataIdentity.parentTuneId);
   }
 
   const finalNames = new Set<TuneFileName>(existingNames);
@@ -573,6 +607,7 @@ export async function updateTuneOnGitHub({
   assertMetadataMatchesFinalFiles(metadataIdentity, finalNames);
 
   const stagedFiles = files.filter((file) => file !== metadata);
+  const mutations: AppliedMutation[] = [];
 
   try {
     let completed = 0;
@@ -586,17 +621,24 @@ export async function updateTuneOnGitHub({
       );
 
       const existing = byPath.get(file.path);
-      await writeContentFile(
+      const result = await writeContentFile(
         trimmedToken,
         file,
         `Update tune ${tuneId}: ${file.path.split('/').pop()} [skip ci]`,
         existing?.sha,
       );
+      mutations.push({
+        kind: 'write',
+        path: file.path,
+        before: snapshot.get(file.path),
+        afterSha: await resolvedWriteSha(trimmedToken, file.path, result),
+      });
     }
 
     for (const path of deletePaths) {
       const existing = byPath.get(path);
-      if (!existing) continue;
+      const before = snapshot.get(path);
+      if (!existing || !before) continue;
 
       completed += 1;
       onProgress?.(
@@ -604,21 +646,17 @@ export async function updateTuneOnGitHub({
         `${completed}/${total} · remove ${path.split('/').pop()}`,
       );
 
-      await githubRequest(
+      await deleteContentFile(
         trimmedToken,
-        `/repos/${BASE_OWNER}/${BASE_REPO}/contents/${path
-          .split('/')
-          .map(encodeURIComponent)
-          .join('/')}`,
-        {
-          method: 'DELETE',
-          body: JSON.stringify({
-            message: `Update tune ${tuneId}: remove ${path.split('/').pop()} [skip ci]`,
-            sha: existing.sha,
-            branch: BASE_BRANCH,
-          }),
-        },
+        path,
+        existing.sha,
+        `Update tune ${tuneId}: remove ${path.split('/').pop()} [skip ci]`,
       );
+      mutations.push({
+        kind: 'delete',
+        path,
+        before,
+      });
     }
 
     onProgress?.('publishing-main', `${total}/${total} · metadata.json`);
@@ -645,8 +683,30 @@ export async function updateTuneOnGitHub({
     };
   } catch (error) {
     const clearer = permissionError(error);
-    if (clearer) throw clearer;
-    throw error;
+    const original = clearer ?? (
+      error instanceof Error ? error : new Error(String(error))
+    );
+
+    if (mutations.length === 0) throw original;
+
+    const rollbackFailures = await rollbackEditMutations(
+      trimmedToken,
+      tuneId,
+      mutations,
+      onProgress,
+    );
+
+    if (rollbackFailures.length > 0) {
+      throw new Error(
+        `${original.message} Automatic rollback could not fully restore the previous tune: `
+        + rollbackFailures.join('; ')
+        + '. Reload the published tune before attempting another edit.',
+      );
+    }
+
+    throw new Error(
+      `${original.message} The previous published tune files were restored automatically.`,
+    );
   }
 }
 
@@ -656,6 +716,7 @@ export async function submitTuneToGitHub({
   title,
   firmwareSignature,
   files,
+  expectedParentMetadataText,
   onProgress,
 }: {
   token: string;
@@ -663,6 +724,7 @@ export async function submitTuneToGitHub({
   title: string;
   firmwareSignature: string;
   files: GitHubSubmissionFile[];
+  expectedParentMetadataText?: string;
   onProgress?: (progress: GitHubSubmissionProgress, detail?: string) => void;
 }): Promise<GitHubSubmissionResult> {
   assertValidTuneId(tuneId);
@@ -699,6 +761,13 @@ export async function submitTuneToGitHub({
 
   onProgress?.('checking-main', `${BASE_OWNER}/${BASE_REPO}`);
   await ensureTuneIdIsUnused(trimmedToken, tuneId);
+  if (metadataIdentity.parentTuneId) {
+    await assertLiveParentTune(
+      trimmedToken,
+      metadataIdentity.parentTuneId,
+      expectedParentMetadataText,
+    );
+  }
 
   const stagedFiles = files.filter((file) => file !== metadata);
   const created: Array<{ path: string; sha: string }> = [];
@@ -714,8 +783,10 @@ export async function submitTuneToGitHub({
         `Stage tune ${tuneId}: ${file.path.split('/').pop()} [skip ci]`,
       );
 
-      const sha = result.content?.sha;
-      if (sha) created.push({ path: file.path, sha });
+      created.push({
+        path: file.path,
+        sha: await resolvedWriteSha(trimmedToken, file.path, result),
+      });
     }
 
     onProgress?.('publishing-main', `${files.length}/${files.length} · metadata.json`);
@@ -740,16 +811,39 @@ export async function submitTuneToGitHub({
       login: user.login,
     };
   } catch (error) {
+    const cleanupFailures: string[] = [];
     for (const staged of [...created].reverse()) {
       try {
+        const current = await getContentEntry(trimmedToken, staged.path);
+        if (!current || current.type !== 'file') continue;
+        if (current.sha !== staged.sha) {
+          cleanupFailures.push(
+            `${staged.path}: current file changed after staging; cleanup did not overwrite it`,
+          );
+          continue;
+        }
+
         await deleteContentFile(trimmedToken, staged.path, staged.sha);
-      } catch {
-        // Best-effort cleanup only. Preserve the original upload error.
+      } catch (cleanupError) {
+        cleanupFailures.push(
+          `${staged.path}: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+        );
       }
     }
 
     const clearer = permissionError(error);
-    if (clearer) throw clearer;
-    throw error;
+    const original = clearer ?? (
+      error instanceof Error ? error : new Error(String(error))
+    );
+
+    if (cleanupFailures.length > 0) {
+      throw new Error(
+        `${original.message} Staged-file cleanup was incomplete: `
+        + cleanupFailures.join('; ')
+        + '. Repository validation will block an orphan/incomplete tune until it is repaired.',
+      );
+    }
+
+    throw original;
   }
 }
