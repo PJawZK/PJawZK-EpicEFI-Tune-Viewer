@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "f407-discovery",
+  "release": "2025-12-02",
+  "label": "f407-discovery · 2025-12-02",
+  "source": "EpicEFI firmware milestone 2025-12-02 · rusefi_bundle_f407-discovery.zip",
+  "expectedSignature": "rusEFI master.2025.12.02.f407-discovery.1718521226"
+}
