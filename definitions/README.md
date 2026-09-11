@@ -1,43 +1,87 @@
 # EpicEFI definition registry
 
-The definition registry is an optional future convenience layer for the Tune Viewer. It must not limit the viewer to one firmware, board, or release.
+The definition registry is an automatic convenience layer for the Tune Viewer. It is **not** a whitelist of supported firmware.
 
-## Core compatibility rule
+Any EpicEFI tune can still be opened with its exact matching local `mainController.ini`. Registry entries simply let common firmware definitions resolve automatically from the MSQ signature.
 
-Every tune is interpreted only against an **exact matching firmware definition**.
+## Source-driven registry
 
-If a firmware signature is not available in a public registry, the user can load the exact matching `mainController.ini` locally. The viewer must never silently choose a nearby version or another ECU target.
+Authoritative definition sources live under:
 
-## Current prototype state
+```text
+definitions/sources/
+└── <definition-id>/
+    ├── mainController.ini
+    └── metadata.json       # optional
+```
 
-The active public registry is intentionally empty while the Tune Hub and INI-driven browser are developed.
+The normal build runs:
+
+```text
+npm run definitions
+```
+
+That command:
+
+1. reads every source `mainController.ini`;
+2. parses it with the same `src/ini.ts` parser used by the browser;
+3. reads the exact TunerStudio firmware signature;
+4. determines the ECU target from the signature or optional metadata;
+5. rejects duplicate firmware signatures;
+6. packs settings, tables, menus, dialogs, curves and label sets;
+7. gzip-compresses the viewer definition pack;
+8. calculates SHA-256 for the compressed pack;
+9. writes generated packs under `public/definitions/generated/`;
+10. regenerates `public/definitions/registry.json`.
+
+No React source changes are needed to add another firmware.
+
+## Runtime layout
+
+Generated output looks like:
 
 ```text
 public/definitions/
-└── registry.json
-```
-
-This means V0.3 does not have a hardcoded supported-firmware list. Arbitrary EpicEFI firmware can be tested by supplying its matching INI.
-
-## Future registry
-
-A mature registry may contain many independently versioned definitions:
-
-```text
-definitions/
 ├── registry.json
-├── mega144h7/
-│   ├── <firmware-a>/
-│   └── <firmware-b>/
-├── another-target/
-│   └── <firmware-c>/
-└── ...
+└── generated/
+    ├── mega144h7/
+    │   ├── firmware-a/
+    │   │   └── definition-pack.json.gz
+    │   └── firmware-b/
+    │       └── definition-pack.json.gz
+    └── another-target/
+        └── firmware-c/
+            └── definition-pack.json.gz
 ```
 
-A registry entry should be keyed by the complete TunerStudio signature and should include integrity metadata for the corresponding viewer definition pack.
+The viewer looks up a tune by its **complete exact firmware signature**. It never chooses a nearby release or another target.
 
-## Intended publication path
+## Optional metadata
 
-The preferred long-term path is for EpicEFI firmware CI to publish/update definition packs whenever supported firmware builds are produced. The viewer frontend should not need source changes when another firmware definition is added.
+A source folder may contain:
 
-The registry remains separate from tune-library publication: a public tune may reference a known registry definition or include/require its exact custom INI when appropriate.
+```json
+{
+  "ecuTarget": "MEGA144H7",
+  "label": "MEGA144H7 · 2026-08-26 · 2273317132",
+  "source": "EpicEFI release 2026-08-26",
+  "expectedSignature": "rusEFI master.2026.08.26.MEGA144H7.2273317132"
+}
+```
+
+`expectedSignature` is a useful CI guard: if the wrong INI is placed in that source folder, the build fails rather than silently publishing it under the wrong release identity.
+
+## Generated files
+
+Do not hand-edit:
+
+- `public/definitions/registry.json`
+- anything under `public/definitions/generated/`
+
+They are build outputs.
+
+## Long-term firmware CI integration
+
+The intended production path is for EpicEFI firmware CI to provide generated `mainController.ini` definitions to this source layout (or an equivalent publication mechanism) whenever firmware releases are produced.
+
+The registry remains separate from tune publication. A published tune may use a registry definition or include its exact custom INI when no registry entry exists.
