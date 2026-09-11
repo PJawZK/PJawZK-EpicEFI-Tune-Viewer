@@ -86,9 +86,11 @@ The builder:
 - omits duplicate INIs when the exact firmware definition is already registered
 - can submit the validated tune directly to GitHub and open a pull request
 
-For direct submission, the browser uses a GitHub access token held only in page memory. The token is never stored in browser storage or written into tune metadata, ZIPs, commits or PR text.
+For direct submission, the browser uses a GitHub access token held only in page memory. The token is never stored in browser storage or written into tune metadata, ZIPs, commits or logs.
 
-Repository collaborators submit through a temporary branch in the main repository. Other users are routed through a fork when their GitHub token has permission to create/sync one. Nothing is written directly to `main`; GitHub Actions and PR review remain the publication gate.
+Trusted repository writers now publish the tune folder directly to `main` in one atomic commit. No temporary branch, fork or pull request is created. The main reference update is non-forced, so if `main` changes during the upload the publication fails safely instead of overwriting concurrent work.
+
+Users without write permission cannot use direct-main publishing and can use the ZIP fallback instead.
 
 The ZIP option remains available for manual/offline submission.
 
@@ -112,7 +114,7 @@ The prototype is static-first:
 - GitHub Pages deployment
 - repository-backed tune metadata
 - browser-local submission packaging
-- explicit browser-to-GitHub branch/PR submission
+- explicit trusted-writer browser-to-GitHub direct-main submission
 
 The frontend data model is kept independent from storage so a future EpicEFI-hosted API/database can replace the repository-backed prototype without rewriting the tune viewer.
 
@@ -125,7 +127,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.8.1 prototype.** Submit Tune now packages original file bytes with archive-size sanity checks and can create a GitHub submission branch/pull request directly from the browser. CI independently verifies MSQ/INI/metadata firmware signatures before publication. V0.8 Tune Compare remains available at `#/compare`.
+**V0.8.2 prototype.** Trusted repository writers can now publish a validated tune directly to `main` in one atomic non-forced commit, without a temporary branch or pull request. ZIP fallback remains available. CI still independently verifies MSQ/INI/metadata firmware signatures after publication. V0.8 Tune Compare remains available at `#/compare`.
 
 
 ## Multi-firmware definition pipeline
