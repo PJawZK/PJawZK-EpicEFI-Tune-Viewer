@@ -1,5 +1,5 @@
 const API_ROOT = 'https://api.github.com';
-const API_VERSION = '2022-11-28';
+const API_VERSION = '2026-03-10';
 const BASE_OWNER = 'PJawZK';
 const BASE_REPO = 'PJawZK-EpicEFI-Tune-Viewer';
 const BASE_BRANCH = 'main';
