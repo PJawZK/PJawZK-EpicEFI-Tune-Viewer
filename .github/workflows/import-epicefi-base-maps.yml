@@ -278,6 +278,58 @@ jobs:
               destination.write_bytes(data)
 
           sig_re = re.compile(br'<versionInfo\b[^>]*\bsignature\s*=\s*["\']([^"\']+)["\']', re.I)
+          ini_sig_re = re.compile(r'^\\s*signature\\s*=\\s*["\\']([^"\\']+)["\\']', re.I | re.M)
+          firmware_paths = None
+
+          def ini_signature(data):
+              text = data.decode('latin-1', errors='replace')
+              match = ini_sig_re.search(text)
+              return match.group(1).strip() if match else ''
+
+          def matching_firmware_ini(signature):
+              global firmware_paths
+              if firmware_paths is None:
+                  response = requests.get(FW_BASE + 'list.php', timeout=60)
+                  response.raise_for_status()
+                  firmware_paths = [
+                      p for p in response.json()
+                      if isinstance(p, str) and p.lower().endswith('.zip')
+                  ]
+
+              date_match = re.search(r'(20\\d{2})\\.(\\d{2})\\.(\\d{2})', signature)
+              date_folder = '-'.join(date_match.groups()) if date_match else ''
+              parts = signature.split('.')
+              target = parts[-2] if len(parts) >= 2 else ''
+              target_lower = target.lower()
+
+              candidates = [
+                  p for p in firmware_paths
+                  if (not date_folder or date_folder in p)
+                  and target_lower in p.lower()
+              ]
+              if not candidates:
+                  candidates = [p for p in firmware_paths if target_lower in p.lower()]
+
+              print(f'RESOLVE signature={signature} candidates={len(candidates)}')
+              for bundle in sorted(candidates):
+                  try:
+                      with RemoteZip(FW_BASE + bundle, timeout=120) as rz:
+                          infos = [
+                              i for i in rz.infolist()
+                              if not i.is_dir()
+                              and i.filename.lower().endswith('.ini')
+                              and not i.filename.replace('\\\\', '/').lower().startswith('epictuner/resources/')
+                          ]
+                          for info in infos:
+                              data = rz.read(info.filename)
+                              if ini_signature(data) == signature:
+                                  print(f'RESOLVED {signature} <- {bundle} :: {info.filename}')
+                                  return data, bundle, info.filename
+                  except Exception as exc:
+                      print(f'WARN resolving {bundle}: {exc!r}')
+
+              raise RuntimeError(f'No exact firmware INI found for {signature}')
+
 
           imported = []
           ROOT.mkdir(parents=True, exist_ok=True)
