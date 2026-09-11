@@ -200,9 +200,14 @@ export default function TuneHub({ navigate }: TuneHubProps) {
             calibration for another engine.
           </p>
         </div>
-        <button type="button" className="open-button button-reset" onClick={() => navigate('/local')}>
-          Open local tune
-        </button>
+        <div className="hub-hero-actions">
+          <button type="button" className="open-button button-reset" onClick={() => navigate('/local')}>
+            Open local tune
+          </button>
+          <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/submit')}>
+            Submit tune
+          </button>
+        </div>
       </header>
 
       <section className="hub-controls panel">
@@ -276,9 +281,14 @@ export default function TuneHub({ navigate }: TuneHubProps) {
             The Tune Hub is operational, but the GitHub prototype catalog intentionally starts empty.
             Opening a tune locally does not publish it.
           </p>
-          <button type="button" className="open-button button-reset" onClick={() => navigate('/local')}>
-            Open a local EpicEFI tune
-          </button>
+          <div className="hub-empty-actions">
+            <button type="button" className="open-button button-reset" onClick={() => navigate('/local')}>
+              Open a local EpicEFI tune
+            </button>
+            <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/submit')}>
+              Prepare first tune submission
+            </button>
+          </div>
         </section>
       )}
 
