@@ -104,13 +104,23 @@ The ZIP option remains available for manual/offline submission.
 
 ## Tune lineage and revisions
 
-Published tunes can now use `parentTuneId` as an explicit lineage relationship.
+Published tunes can use `parentTuneId` as an explicit lineage relationship.
 
-A published tune page includes a **Lineage** tab showing its ancestor chain and all derived revisions.
+The **Lineage** tab now acts as a revision-history view:
 
-**Edit tune** keeps the same Tune ID and updates the existing published identity.
+- chronological ancestor/current chain
+- Root / Current / Latest state markers
+- publication date and same-ID edit date
+- previous-revision navigation
+- next-revision navigation, including branches
+- all descendants derived from the current tune
+- version label and Tune ID visibility
 
-**Create revision** clones the source tune into a new Tune ID, locks the source as its parent, resets validation to `Unverified`, and reuses the existing direct-main publication workflow.
+**Edit tune** keeps the same Tune ID. The original `publishedAt` remains while `updatedAt` represents a later edit of that same identity.
+
+**Create revision** publishes a new Tune ID, locks the source as its parent, resets validation to `Unverified`, and suggests a lineage-wide revision identity such as `-r2` with version label `R2`.
+
+Tune Hub cards show lightweight Root/Revision/version cues without replacing the existing validation/classification badges.
 
 Repository validation rejects missing lineage parents, self-parenting and circular ancestry.
 
@@ -163,7 +173,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.9.1 prototype.** Tune lineage/history and Create Revision remain in place, and published author names now open metadata-driven author pages with tune counts, ECU/vehicle/engine summaries, search, filtering and sorting. These are catalog views rather than authenticated accounts. V0.8 Tune Compare and the V0.8.x direct publish/edit workflow remain in place.
+**V0.9.2 prototype.** Tune lineage is now presented as a chronological revision history with Root/Current/Latest markers, previous/next navigation, branch handling, publication-vs-edit dates and clearer revision identity defaults. Tune Hub cards expose lightweight lineage cues, while metadata-driven author pages and the V0.8 compare/direct-publish workflows remain in place.
 
 
 ## Multi-firmware definition pipeline
