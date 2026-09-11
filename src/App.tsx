@@ -6,6 +6,7 @@ import SubmitTune from './SubmitTune';
 import DefinitionHub from './DefinitionHub';
 import SubmitDefinition from './SubmitDefinition';
 import TuneCompare from './TuneCompare';
+import AuthorPage from './AuthorPage';
 
 type Route =
   | { kind: 'hub' }
@@ -13,6 +14,7 @@ type Route =
   | { kind: 'submit' }
   | { kind: 'edit'; id: string }
   | { kind: 'revision'; id: string }
+  | { kind: 'author'; author: string }
   | { kind: 'definitions' }
   | { kind: 'submitDefinition' }
   | { kind: 'compare' }
@@ -37,6 +39,16 @@ function parseRoute(): Route {
     return { kind: 'submitDefinition' };
   }
   if (parts[0] === 'definitions') return { kind: 'definitions' };
+
+  if (parts[0] === 'author' && parts[1]) {
+    let author = parts[1];
+    try {
+      author = decodeURIComponent(author);
+    } catch {
+      // Keep the raw value so the author page can show a useful empty state.
+    }
+    return { kind: 'author', author };
+  }
 
   if (parts[0] === 't' && parts[1] && parts[2] === 'edit') {
     let id = parts[1];
@@ -117,7 +129,7 @@ export default function App() {
         <div className="site-nav-links">
           <button
             type="button"
-            className={route.kind === 'hub' ? 'active' : ''}
+            className={route.kind === 'hub' || route.kind === 'author' ? 'active' : ''}
             onClick={() => navigate('/')}
           >
             Tune Hub
@@ -164,6 +176,7 @@ export default function App() {
       </nav>
 
       {route.kind === 'hub' && <TuneHub navigate={navigate} />}
+      {route.kind === 'author' && <AuthorPage author={route.author} navigate={navigate} />}
       {route.kind === 'local' && <LocalTuneViewer />}
       {route.kind === 'compare' && <TuneCompare navigate={navigate} />}
       {route.kind === 'submit' && <SubmitTune navigate={navigate} />}
