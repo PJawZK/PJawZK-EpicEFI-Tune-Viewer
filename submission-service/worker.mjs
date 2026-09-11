@@ -351,7 +351,7 @@ async function verifyTurnstile(request, env, token) {
   }
 
   const expectedAction = env.TURNSTILE_EXPECTED_ACTION?.trim() || 'submit_tune';
-  if (result.action && result.action !== expectedAction) {
+  if (result.action !== expectedAction) {
     const error = new Error('Anti-bot verification action did not match this submission.');
     error.status = 403;
     throw error;
@@ -550,10 +550,15 @@ async function submitTune(request, env, origin) {
   }
 
   const metadataBytes = textBytes(metadataRaw);
+  const parentSnapshotBytes =
+    typeof parentMetadataSnapshot === 'string'
+      ? textBytes(parentMetadataSnapshot)
+      : 0;
   const iniBytes = ini instanceof File ? ini.size : 0;
-  const total = metadataBytes + msq.size + iniBytes;
+  const total = metadataBytes + parentSnapshotBytes + msq.size + iniBytes;
   if (
     metadataBytes > MAX_METADATA_BYTES
+    || parentSnapshotBytes > MAX_METADATA_BYTES
     || msq.size > MAX_MSQ_BYTES
     || iniBytes > MAX_INI_BYTES
     || total > MAX_TOTAL_BYTES
