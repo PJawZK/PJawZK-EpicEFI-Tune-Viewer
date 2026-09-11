@@ -1,0 +1,36 @@
+{
+  "id": "volvo-940-turbo-jz",
+  "title": "Volvo 940 Turbo JZ",
+  "summary": "PA0 - IAT (A0)\nPA1 - CLT (A1)\nPA2 - TPS (A2)\nPA3 - MAP (A3)\nPA4 - BAT+ (A4)\nPA5 - BARO (A5)\nPB0 - O2 (A8)\n\nPA6 - OilTemp (A6) (Blue)\nPA7 - FuelTemp (A7) (Green)\nPB1 - OilPress (A9) (Yellow)\nPC0 - FuelPress (A10) (brown)\n\nPC1 -  (A11)\nPC2 -  (A12)\nPC3 -  (A13)\nPC4 -  (A14)\nPC5 - Ambient Temp (A15)\n\nIDC 14 - Flex Sensor (D43/PB6)\nIDC 15 - - (D47/PE1)\nIDC 16 - - (D45/PB8)\nIDC 17 - Tachometer (D49/PE3)\nIDC 18 -  (D51/PE5)\nIDC 35 - Boost (PD11/D7)\nIDC 36 -  Fuel Pump (Idle 2, PD10/D6)\nIDC 37 - Idle PWM (Idle 1, PD9/D5)\nIDC 38 - Thermo Fan (VVT, PD8/D4)\n\nEth - Flex Fuel (D2/PB15)\n20 - VSS Input (D20/PE13) (Protoa area null) (Purple)\n21 -  -  (D20/PE13) (Protoa area null)",
+  "author": "JawZ",
+  "publishedAt": "2026-09-11",
+  "ecuTarget": "MEGA144H7",
+  "firmwareSignature": "rusEFI master.2026.08.26.MEGA144H7.2273317132",
+  "validationStatus": "Starts/Idles",
+  "classification": "Normal",
+  "vehicle": {
+    "make": "Volvo",
+    "model": "940",
+    "year": 1997,
+    "trim": "Sedan"
+  },
+  "engine": {
+    "make": "B230FK",
+    "displacementLiters": 2.316,
+    "cylinders": 4,
+    "aspiration": "Naturally Aspirated",
+    "compressionRatio": 9
+  },
+  "fuel": "E10",
+  "ignition": "Wasted Spark",
+  "injectorCc": 510,
+  "powerHp": 230,
+  "stockPowerHp": 135,
+  "boostBar": 0.8,
+  "tags": [],
+  "notes": "Volvo 940 Turbo LPT 1997, B230FK\n\nBlock; Crank - Stock\nRods - Stock\nPistons - Stock\nPiston Squirters - Yes\nOil pump - Stock\nOil pan - Stock\nCrank Pulley - Stock\nPump Drive Axle - Stock (No cast port for CAM signal)\n\nCylinderhead;\n530 Intake ports - Stage 1 ported\nExhaust ports - Stage 1 ported\nCamshaft - Volvo V camshaft\nValve Springs - Stock\nValve Retainers - Stock\nCooling passages - Drilled up Group A Rally ports\nThermostat port - Mild ported\nOil passages - Stock\nDecked - 0.6mm\nCombustion Chamber - Re-shaped with ~52cc volume\nCam gear - Stock\nCam Trigger - Yes DIY, on camshaft\n\nIgnition;\nDistribution - Wasted Spark (OEM VWAG 106B coil)\nCables - Silicone high insulation cables\nSpark Plugs - NGK BPR6ES, 0.6mm gap\nPowerstage - Built-in into coil pack\n\nFuel;\nFuel pump - Walbro 255 L/H\nInjectors - Bosch 550cc 0280158117\nFPR - Stock @3bar\nFuel lines - Stock\nFuel Filter - Mini 30 micron with replacable metal filter\nTank - Stock\nFuel rail - Stock\n\nIntake;\nManifold - Stock B230 LH 2.4\nCharge pipes - 2.5\" alu and silicone hoses\nIntercooler - 73mm thick 550x300x76 2.5\" piping, Bar & Plate\nTurbo Intake - Custom DIY Air Filter - Custom cold air intake filter, cold air through fenders\nThrottle Body - Audi A6 electric Idle control (65mm inner Ø)\n\nExhaust;\nTurbo - TD04-13T\nManifold - Stock 940\nExhaust system - Custom DIY 3\" Muffler - Biltema 3\" short Cat. - 3\" 100 cell race cat.\nO2 sensor - Innovate LC-1\nEGT - No\nBackpressure sensors - No",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}
