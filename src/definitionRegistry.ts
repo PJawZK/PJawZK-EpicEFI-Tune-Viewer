@@ -21,6 +21,7 @@ export type DefinitionRegistryEntry = {
   dialogCount?: number;
   curveCount?: number;
   source: string;
+  release?: string;
 };
 
 export type DefinitionRegistry = {

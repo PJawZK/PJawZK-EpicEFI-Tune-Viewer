@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "epicECU",
+  "release": "2026-09-11",
+  "label": "epicECU · 2026-09-11",
+  "source": "EpicEFI firmware milestone 2026-09-11 · epicefi_bundle_epicECU.zip",
+  "expectedSignature": "epicEFI master.2026.09.11.epicECU.2621279478"
+}

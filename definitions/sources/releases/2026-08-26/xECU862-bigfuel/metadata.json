@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "xECU862-bigfuel",
+  "release": "2026-08-26",
+  "label": "xECU862-bigfuel · 2026-08-26",
+  "source": "EpicEFI firmware milestone 2026-08-26 · rusefi_bundle_xECU862-bigfuel.zip",
+  "expectedSignature": "rusEFI master.2026.08.26.xECU862-bigfuel.2526991802"
+}

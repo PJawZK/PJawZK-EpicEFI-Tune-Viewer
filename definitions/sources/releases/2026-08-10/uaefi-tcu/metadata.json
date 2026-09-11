@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "uaefi-tcu",
+  "release": "2026-08-10",
+  "label": "uaefi-tcu · 2026-08-10",
+  "source": "EpicEFI firmware milestone 2026-08-10 · rusefi_bundle_uaefi-tcu.zip",
+  "expectedSignature": "rusEFI master.2026.08.10.uaefi_tcu.4125187965"
+}

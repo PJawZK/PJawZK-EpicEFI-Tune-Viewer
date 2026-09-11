@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "uaefi",
+  "release": "2026-03-30",
+  "label": "uaefi · 2026-03-30",
+  "source": "EpicEFI firmware milestone 2026-03-30 · rusefi_bundle_uaefi.zip",
+  "expectedSignature": "rusEFI master.2026.03.30.uaefi.985086345"
+}

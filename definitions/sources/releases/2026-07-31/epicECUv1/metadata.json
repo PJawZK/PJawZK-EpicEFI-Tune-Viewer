@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "epicECUv1",
+  "release": "2026-07-31",
+  "label": "epicECUv1 · 2026-07-31",
+  "source": "EpicEFI firmware milestone 2026-07-31 · rusefi_bundle_epicECUv1.zip",
+  "expectedSignature": "rusEFI master.2026.07.31.epicECUv1.2433363304"
+}

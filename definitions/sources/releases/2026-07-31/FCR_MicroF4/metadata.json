@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "FCR_MicroF4",
+  "release": "2026-07-31",
+  "label": "FCR_MicroF4 · 2026-07-31",
+  "source": "EpicEFI firmware milestone 2026-07-31 · rusefi_bundle_FCR_MicroF4.zip",
+  "expectedSignature": "rusEFI master.2026.07.31.FCR_MicroF4.3214849839"
+}

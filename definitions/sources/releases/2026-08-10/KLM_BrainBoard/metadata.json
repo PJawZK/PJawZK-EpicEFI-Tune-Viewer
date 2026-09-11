@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "KLM_BrainBoard",
+  "release": "2026-08-10",
+  "label": "KLM_BrainBoard · 2026-08-10",
+  "source": "EpicEFI firmware milestone 2026-08-10 · rusefi_bundle_KLM_BrainBoard.zip",
+  "expectedSignature": "rusEFI master.2026.08.10.KLM_BrainBoard.2203453064"
+}
