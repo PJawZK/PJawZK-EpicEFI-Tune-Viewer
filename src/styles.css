@@ -2011,3 +2011,117 @@ footer {
     align-items: stretch;
   }
 }
+
+
+.select-menu {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.select-menu.search {
+  width: min(340px, 100%);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.hub-search-row .select-menu.search,
+.definition-controls .select-menu.search {
+  width: 100%;
+  max-width: none;
+}
+
+.select-menu-button {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 11px;
+  border: 1px solid #344149;
+  border-radius: 6px;
+  color: #e3edf1;
+  background: #111719;
+  text-align: left;
+  cursor: pointer;
+}
+
+.select-menu-button:hover,
+.select-menu-button:focus-visible {
+  border-color: #718994;
+  outline: none;
+}
+
+.select-menu-placeholder {
+  color: #738790;
+}
+
+.select-menu-chevron {
+  flex: 0 0 auto;
+  color: #81959e;
+  font-size: .78rem;
+}
+
+.select-menu-list {
+  position: absolute;
+  z-index: 250;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 5px;
+  border: 1px solid #405058;
+  border-radius: 7px;
+  background: #111719;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .46);
+}
+
+.select-menu-option {
+  display: block;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 5px;
+  color: #c9d6db;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.select-menu-option:hover,
+.select-menu-option.active {
+  color: #eef6f8;
+  background: #202a2f;
+}
+
+.select-menu-option.selected {
+  color: #f3f8fa;
+  background: #26333a;
+  font-weight: 700;
+}
+
+.select-menu-option:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.hub-filter-control .select-menu-button {
+  min-height: 34px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+}
+
+.compare-filter-row .select-menu,
+.compare-selector-row .select-menu {
+  min-width: 0;
+}
+
+.compare-filter-row .select-menu-button,
+.compare-selector-row .select-menu-button {
+  min-height: 40px;
+}
