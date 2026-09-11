@@ -87,18 +87,35 @@ The builder:
 - requires a matching local `mainController.ini` when the signature is not registered
 - blocks mismatched definitions
 - collects vehicle, engine and calibration metadata
-- requires explicit validation and classification selection
+- defaults validation to `Unverified`
 - does not allow a user to self-assign `EpicEFI Verified`
 - checks the proposed tune ID against the current public catalog
 - creates a corrected repository-ready ZIP from the original browser File objects
 - omits duplicate INIs when the exact firmware definition is already registered
-- can publish the validated tune directly into `main` for trusted repository writers
+- supports public no-GitHub-account creation through a separately deployed submission service
+- preserves direct-main publication for trusted repository writers
 
-For direct submission, the browser uses a GitHub access token held only in page memory. The token is never stored in browser storage or written into tune metadata, ZIPs, commits or logs.
+### Public community submission
+
+V0.12 adds a create-only public submission service foundation under `submission-service/`.
+
+When deployed and configured, users can publish a **new Tune ID** or **new revision** without:
+
+- a GitHub account
+- a personal access token
+- repository collaborator access
+
+The service authenticates as a narrowly scoped GitHub App installation, revalidates the package server-side, verifies Turnstile server-side, preserves normal self-declared validation states while rejecting `EpicEFI Verified`, checks the live destination and lineage on `main`, then stages tune assets and writes `metadata.json` last.
+
+The public service intentionally has no anonymous edit/delete path. Same-ID edits remain restricted to trusted repository writers.
+
+See `submission-service/README.md` for GitHub App, Cloudflare Worker and Turnstile deployment/configuration.
+
+### Trusted-writer direct upload
+
+For trusted-writer submission, the browser uses a GitHub access token held only in page memory. The token is never stored in browser storage or written into tune metadata, ZIPs, commits or logs.
 
 Trusted repository writers publish the tune folder directly to `main` with no temporary branch, fork or pull request. The browser uses GitHub's Contents API: tune assets are staged with CI-skipping commits and `metadata.json` is written last to trigger the authoritative catalog/build validation.
-
-Users without write permission cannot use direct-main publishing and can use the ZIP fallback instead.
 
 The ZIP option remains available for manual/offline submission.
 
@@ -230,7 +247,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.10.2 prototype.** Tune Hub, collection and author cards now expose a clearer validation/tune-state hierarchy, compact performance metrics, firmware summaries and publication/update state. Published tune Info pages add an At a glance summary and stronger Base Map reference treatment. V0.10.1 structured collections, V0.10 facets/related-tune discovery, V0.9 lineage/history/author pages and the V0.8 compare/direct-publish workflows remain in place.
+**V0.12 public-submission foundation.** V0.11 completed repository/publication hardening: exact signature enforcement, reserved validation authority, canonical tune-folder validation, stale-edit protection, live lineage/collision checks, generated-index consistency and interrupted-write recovery. V0.12 adds the create-only no-GitHub-account submission service foundation using a GitHub App installation and server-side Turnstile validation, while preserving the trusted-writer direct-main path.
 
 
 ## Multi-firmware definition pipeline

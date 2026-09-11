@@ -29,7 +29,14 @@ import {
   type GitHubSubmissionResult,
 } from './githubSubmission';
 import SelectMenu from './SelectMenu';
+import TurnstileWidget from './TurnstileWidget';
 import { mergeEcuTargets } from './ecuTargets';
+import {
+  publicSubmissionEnabled,
+  publicTurnstileSiteKey,
+  submitTuneToPublicService,
+  type PublicSubmissionResult,
+} from './publicSubmission';
 import { assertValidTuneId } from './publicationPolicy';
 
 type SubmitTuneProps = {
@@ -138,7 +145,7 @@ const initialForm: FormState = {
   summary: '',
   author: '',
   ecuTarget: '',
-  validationStatus: '',
+  validationStatus: 'Unverified',
   classification: '',
   vehicleMake: '',
   vehicleModel: '',
@@ -416,6 +423,11 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
   const [githubProgressDetail, setGitHubProgressDetail] = useState('');
   const [githubError, setGitHubError] = useState('');
   const [githubResult, setGitHubResult] = useState<GitHubSubmissionResult | null>(null);
+  const [publicSubmitting, setPublicSubmitting] = useState(false);
+  const [publicError, setPublicError] = useState('');
+  const [publicResult, setPublicResult] = useState<PublicSubmissionResult | null>(null);
+  const [publicTurnstileToken, setPublicTurnstileToken] = useState('');
+  const [publicTurnstileResetKey, setPublicTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -1035,6 +1047,54 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
     }
   }
 
+
+  async function submitPublicTune() {
+    if (
+      editId
+      || !metadata
+      || validationErrors.length
+      || !msqFile
+      || !tune
+      || !publicSubmissionEnabled
+    ) return;
+
+    setPublicSubmitting(true);
+    setPublicError('');
+    setPublicResult(null);
+
+    try {
+      const packaged = packageMetadata(metadata);
+      const publicMetadata: PublishedTuneMetadata = {
+        ...packaged,
+        updatedAt: undefined,
+      };
+
+      const result = await submitTuneToPublicService({
+        metadata: publicMetadata,
+        msq: msqFile,
+        ini: shouldIncludeIni && iniFile ? iniFile : undefined,
+        turnstileToken: publicTurnstileToken,
+        parentMetadataSnapshot:
+          isRevision ? originalMetadataText : undefined,
+      });
+
+      rememberPublishedTune(publicMetadata);
+      setPublicResult(result);
+      setPublicTurnstileToken('');
+      setPublicTurnstileResetKey((value) => value + 1);
+    } catch (caught) {
+      setPublicError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to submit this tune through the public service.',
+      );
+      setPublicTurnstileToken('');
+      setPublicTurnstileResetKey((value) => value + 1);
+    } finally {
+      setPublicSubmitting(false);
+    }
+  }
+
   return (
     <main>
       {editLoading && (
@@ -1071,7 +1131,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               ? 'Update the published metadata and optionally replace the MSQ or matching firmware definition.'
               : isRevision
                 ? 'Create a new published tune derived from this source while preserving its lineage.'
-                : 'Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, and publish it directly to the Tune Hub repository when you explicitly choose Upload to main.'}
+                : 'Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, then use public community submission or the trusted-writer GitHub path when available.'}
           </p>
         </div>
         <button
@@ -1472,6 +1532,84 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <div className="package-size-check">
             <span>Raw package input <strong>{formatBytes(packageStats.raw)}</strong></span>
             <span>Generated ZIP <strong>{formatBytes(packageStats.zip)}</strong></span>
+          </div>
+        )}
+
+        {!editId && (
+          <div className="github-submit-panel">
+            <div className="github-submit-heading">
+              <div>
+                <p className="eyebrow">Public community submission</p>
+                <h3>
+                  {isRevision
+                    ? 'Publish revision without a GitHub account'
+                    : 'Publish tune without a GitHub account'}
+                </h3>
+              </div>
+              <span className="badge">EpicEFI Verified reserved</span>
+            </div>
+
+            {publicSubmissionEnabled ? (
+              <>
+                <p className="submit-help">
+                  This path does not require a GitHub account or repository access. The submission
+                  service validates the MSQ, exact firmware definition, tune identity and lineage
+                  again before creating a new tune folder on main. Normal validation states are
+                  preserved, while EpicEFI Verified remains repository-controlled. Public
+                  submissions can create tunes or revisions, but cannot edit or overwrite an
+                  existing Tune ID.
+                </p>
+
+                <TurnstileWidget
+                  siteKey={publicTurnstileSiteKey}
+                  resetKey={publicTurnstileResetKey}
+                  onToken={setPublicTurnstileToken}
+                />
+
+                {publicError && <div className="mismatch">{publicError}</div>}
+
+                {publicResult && (
+                  <div className="github-success">
+                    <div>
+                      <strong>Public tune submitted</strong>
+                      <span>
+                        {publicResult.tuneId} · {publicResult.validationStatus} · {publicResult.commitSha.slice(0, 12)}
+                      </span>
+                    </div>
+                    <a
+                      className="open-button"
+                      href={publicResult.commitUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open commit
+                    </a>
+                  </div>
+                )}
+
+                <div className="submission-actions">
+                  <button
+                    type="button"
+                    className="open-button button-reset"
+                    disabled={
+                      validationErrors.length > 0
+                      || publicSubmitting
+                      || !publicTurnstileToken
+                    }
+                    onClick={() => void submitPublicTune()}
+                  >
+                    {publicSubmitting
+                      ? (isRevision ? 'Publishing revision…' : 'Publishing tune…')
+                      : (isRevision ? 'Submit public revision' : 'Submit public tune')}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="mismatch">
+                Public no-account submission is implemented but not enabled on this deployment yet.
+                The submission service endpoint and Turnstile site key must be configured first.
+              </div>
+            )}
           </div>
         )}
 

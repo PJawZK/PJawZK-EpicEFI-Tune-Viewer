@@ -1,0 +1,20 @@
+name = "epicefi-tune-viewer-submissions"
+main = "worker.mjs"
+compatibility_date = "2026-09-01"
+
+[vars]
+GITHUB_OWNER = "PJawZK"
+GITHUB_REPO = "PJawZK-EpicEFI-Tune-Viewer"
+GITHUB_BRANCH = "main"
+TURNSTILE_EXPECTED_ACTION = "submit_tune"
+# Set these two to the deployed Tune Viewer origin/hostname.
+# Example:
+# PUBLIC_SITE_ORIGIN = "https://pjawzk.github.io"
+# TURNSTILE_EXPECTED_HOSTNAME = "pjawzk.github.io"
+
+# Store these with `wrangler secret put`, never in this file:
+# GITHUB_APP_ID
+# GITHUB_INSTALLATION_ID
+# GITHUB_PRIVATE_KEY
+# TURNSTILE_SECRET_KEY
+#
