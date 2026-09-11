@@ -9,6 +9,13 @@ import {
   vehicleCollectionPath,
 } from './tuneDiscovery';
 import { loadTuneIndex } from './tuneLibrary';
+import {
+  firmwareSummary,
+  formatTuneDate,
+  tuneIdentity,
+  tuneMetrics,
+  validationClass,
+} from './tunePresentation';
 import SelectMenu from './SelectMenu';
 
 type TuneHubProps = {
@@ -16,16 +23,6 @@ type TuneHubProps = {
 };
 
 type HubScope = 'all' | 'base' | 'community';
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
-}
 
 function metadataSearchText(tune: PublishedTuneMetadata): string {
   return [
@@ -92,6 +89,9 @@ function TuneCard({
   ].filter(Boolean).join(' · ');
 
   const baseTune = isBaseTune(tune);
+  const metrics = tuneMetrics(tune);
+  const identity = tuneIdentity(tune);
+  const updated = tune.updatedAt && tune.updatedAt !== tune.publishedAt;
 
   return (
     <article className={`tune-card ${baseTune ? 'base-tune-card' : 'community-tune-card'}`}>
@@ -128,6 +128,10 @@ function TuneCard({
             </button>
           )}
           <h3>{tune.title}</h3>
+          <div className="tune-card-identity">
+            <span>{identity}</span>
+            {updated && <span>Updated {formatTuneDate(tune.updatedAt)}</span>}
+          </div>
         </div>
         <div className="tune-card-badges">
           {tune.parentTuneId && <span className="badge lineage-badge">Revision</span>}
@@ -138,7 +142,9 @@ function TuneCard({
           <span className={`badge ${baseTune ? 'base-map-badge' : ''}`}>
             {tune.classification}
           </span>
-          <span className="badge badge-ok">{tune.validationStatus}</span>
+          <span className={`badge validation-badge ${validationClass(tune.validationStatus)}`}>
+            {tune.validationStatus}
+          </span>
         </div>
       </div>
 
@@ -174,6 +180,22 @@ function TuneCard({
         )}
       </div>
 
+      {metrics.length > 0 && (
+        <div className="tune-card-metrics">
+          {metrics.slice(0, 4).map((metric) => (
+            <div key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="tune-card-firmware">
+        <span>Firmware</span>
+        <strong title={tune.firmwareSignature}>{firmwareSummary(tune.firmwareSignature)}</strong>
+      </div>
+
       <div className="tune-card-meta">
         <div>
           <span>ECU</span>
@@ -197,14 +219,15 @@ function TuneCard({
         </div>
         <div>
           <span>Published</span>
-          <strong>{formatDate(tune.publishedAt)}</strong>
+          <strong>{formatTuneDate(tune.publishedAt)}</strong>
+          {updated && <small>Edited {formatTuneDate(tune.updatedAt)}</small>}
         </div>
       </div>
 
       {tune.tags.length > 0 && (
         <div className="tune-tags">
-          {tune.tags.slice(0, 7).map((tag) => <span key={tag}>{tag}</span>)}
-          {tune.tags.length > 7 && <span>+{tune.tags.length - 7}</span>}
+          {tune.tags.slice(0, 4).map((tag) => <span key={tag}>{tag}</span>)}
+          {tune.tags.length > 4 && <span>+{tune.tags.length - 4}</span>}
         </div>
       )}
 

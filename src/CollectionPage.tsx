@@ -10,6 +10,12 @@ import {
   vehicleCollectionPath,
 } from './tuneDiscovery';
 import { loadTuneIndex } from './tuneLibrary';
+import {
+  firmwareSummary,
+  formatTuneDate,
+  tuneMetrics,
+  validationClass,
+} from './tunePresentation';
 
 export type CollectionView =
   | { kind: 'overview' }
@@ -43,16 +49,6 @@ function uniqueSorted(values: Array<string | undefined>): string[] {
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value)),
   )].sort((left, right) => left.localeCompare(right));
-}
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(date);
 }
 
 function searchText(tune: PublishedTuneMetadata): string {
@@ -130,6 +126,8 @@ function CollectionTuneCard({
 }) {
   const vehicle = displayVehicle(tune);
   const engine = displayEngine(tune);
+  const metrics = tuneMetrics(tune);
+  const updated = tune.updatedAt && tune.updatedAt !== tune.publishedAt;
 
   return (
     <article className={`collection-tune-card ${isBaseTune(tune) ? 'base' : ''}`}>
@@ -143,7 +141,9 @@ function CollectionTuneCard({
           <span className={`badge ${isBaseTune(tune) ? 'base-map-badge' : ''}`}>
             {tune.classification}
           </span>
-          <span className="badge badge-ok">{tune.validationStatus}</span>
+          <span className={`badge validation-badge ${validationClass(tune.validationStatus)}`}>
+            {tune.validationStatus}
+          </span>
         </div>
       </div>
 
@@ -184,8 +184,26 @@ function CollectionTuneCard({
         </button>
       </div>
 
+      {metrics.length > 0 && (
+        <div className="collection-tune-metrics">
+          {metrics.slice(0, 3).map((metric) => (
+            <div key={metric.label}>
+              <span>{metric.label}</span>
+              <strong>{metric.value}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="collection-tune-firmware" title={tune.firmwareSignature}>
+        {firmwareSummary(tune.firmwareSignature)}
+      </div>
+
       <div className="collection-tune-footer">
-        <span>{formatDate(tune.publishedAt)}</span>
+        <span>
+          Published {formatTuneDate(tune.publishedAt)}
+          {updated && <> · Edited {formatTuneDate(tune.updatedAt)}</>}
+        </span>
         <button
           type="button"
           className="tune-card-open"
