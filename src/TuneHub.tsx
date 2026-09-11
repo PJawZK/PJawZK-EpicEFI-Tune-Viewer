@@ -52,9 +52,11 @@ function metadataSearchText(tune: PublishedTuneMetadata): string {
 
 function TuneCard({
   tune,
+  hasChildren,
   navigate,
 }: {
   tune: PublishedTuneMetadata;
+  hasChildren: boolean;
   navigate: (path: string) => void;
 }) {
   const vehicle = [
@@ -79,6 +81,9 @@ function TuneCard({
           <h3>{tune.title}</h3>
         </div>
         <div className="tune-card-badges">
+          {tune.parentTuneId && <span className="badge lineage-badge">Revision</span>}
+          {!tune.parentTuneId && hasChildren && <span className="badge lineage-badge">Root</span>}
+          {tune.versionLabel && <span className="badge lineage-version-badge">{tune.versionLabel}</span>}
           <span className="badge">{tune.classification}</span>
           <span className="badge badge-ok">{tune.validationStatus}</span>
         </div>
@@ -91,6 +96,15 @@ function TuneCard({
         {tune.fuel && <span>{tune.fuel}</span>}
         {tune.powerHp && <span>{tune.powerHp} hp</span>}
         {tune.boostBar !== undefined && <span>{tune.boostBar} bar</span>}
+        {tune.parentTuneId && (
+          <button
+            type="button"
+            className="lineage-inline-link button-reset"
+            onClick={() => navigate(`/t/${encodeURIComponent(tune.id)}/lineage`)}
+          >
+            Lineage
+          </button>
+        )}
       </div>
 
       <div className="tune-card-meta">
@@ -171,6 +185,15 @@ export default function TuneHub({ navigate }: TuneHubProps) {
   );
   const aspirationOptions = useMemo(
     () => [...new Set(tunes.map((tune) => tune.engine?.aspiration).filter(Boolean) as string[])].sort(),
+    [tunes],
+  );
+
+  const parentIds = useMemo(
+    () => new Set(
+      tunes
+        .map((tune) => tune.parentTuneId)
+        .filter((value): value is string => Boolean(value)),
+    ),
     [tunes],
   );
 
@@ -333,7 +356,12 @@ export default function TuneHub({ navigate }: TuneHubProps) {
       {!loading && !loadError && filteredTunes.length > 0 && (
         <section className="tune-grid">
           {filteredTunes.map((tune) => (
-            <TuneCard key={tune.id} tune={tune} navigate={navigate} />
+            <TuneCard
+              key={tune.id}
+              tune={tune}
+              hasChildren={parentIds.has(tune.id)}
+              navigate={navigate}
+            />
           ))}
         </section>
       )}
