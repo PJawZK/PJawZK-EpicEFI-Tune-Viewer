@@ -108,11 +108,10 @@ function githubProgressLabel(
 ): string {
   const labels: Record<GitHubSubmissionProgress, string> = {
     authenticating: 'Authenticating with GitHub',
-    'preparing-repository': 'Preparing GitHub repository',
-    'preparing-branch': 'Preparing submission branch',
+    'checking-main': 'Checking main and tune ID',
     'uploading-files': 'Uploading tune files',
-    'creating-commit': 'Creating submission commit',
-    'opening-pr': 'Opening pull request',
+    'creating-commit': 'Creating tune commit',
+    'publishing-main': 'Publishing commit to main',
   };
 
   return progress ? `${labels[progress]}${detail ? ` · ${detail}` : ''}` : '';
@@ -705,7 +704,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           <h1>Prepare tune submission</h1>
           <p className="lede">
             Validate an EpicEFI MSQ against its exact firmware definition, add public metadata, and
-            create a repository-ready submission package. Nothing is uploaded from this page.
+            publish it directly to the Tune Hub repository when you explicitly choose Upload to main.
           </p>
         </div>
         <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/')}>
@@ -1006,10 +1005,10 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         <div className="panel-heading">
           <div>
             <p className="eyebrow">Step 5</p>
-            <h2>Review and create package</h2>
+            <h2>Review and publish</h2>
           </div>
           <span className={`badge ${validationErrors.length === 0 ? 'badge-ok' : ''}`}>
-            {validationErrors.length === 0 ? 'Ready to package' : `${validationErrors.length} item(s) required`}
+            {validationErrors.length === 0 ? 'Ready to publish' : `${validationErrors.length} item(s) required`}
           </span>
         </div>
 
@@ -1070,8 +1069,8 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         <div className="github-submit-panel">
           <div className="github-submit-heading">
             <div>
-              <p className="eyebrow">Direct GitHub submission</p>
-              <h3>Create branch and pull request</h3>
+              <p className="eyebrow">Direct GitHub upload</p>
+              <h3>Publish tune directly to main</h3>
             </div>
             <span className="badge">Token stays in page memory</span>
           </div>
@@ -1087,9 +1086,8 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
             />
             <small>
               The token is not written to localStorage, the ZIP, tune metadata, commits, or logs.
-              It is sent from this page only to GitHub's API. Repository collaborators need Contents
-              write and Pull requests write. Non-collaborators are routed through a fork when GitHub
-              permits the token to create/sync one.
+              It is sent from this page only to GitHub's API. Direct upload requires write permission
+              to this Tune Viewer repository. Users without write permission can use the ZIP fallback.
             </small>
           </label>
 
@@ -1104,20 +1102,18 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
           {githubResult && (
             <div className="github-success">
               <div>
-                <strong>Pull request #{githubResult.pullRequestNumber} created</strong>
+                <strong>Published directly to main</strong>
                 <span>
-                  {githubResult.usedFork
-                    ? `Fork workflow · ${githubResult.targetRepository}`
-                    : `Repository branch · ${githubResult.targetRepository}`}
+                  {githubResult.targetRepository} · {githubResult.commitSha.slice(0, 12)}
                 </span>
               </div>
               <a
                 className="open-button"
-                href={githubResult.pullRequestUrl}
+                href={githubResult.commitUrl}
                 target="_blank"
                 rel="noreferrer"
               >
-                Open pull request
+                Open commit
               </a>
             </div>
           )}
@@ -1133,7 +1129,7 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
               }
               onClick={() => void submitToGitHub()}
             >
-              {githubSubmitting ? 'Submitting to GitHub…' : 'Submit to GitHub'}
+              {githubSubmitting ? 'Uploading to main…' : 'Upload to main'}
             </button>
             <a
               className="open-button secondary"
@@ -1166,15 +1162,16 @@ export default function SubmitTune({ navigate }: SubmitTuneProps) {
         </div>
 
         <p className="table-note">
-          Direct submission writes only <code>metadata.json</code>, <code>tune.msq</code>, and the
-          matching <code>mainController.ini</code> when the firmware is not already registered.
-          It creates a pull request; it never writes directly to <code>main</code>. The ZIP option
-          remains available for manual/offline submission.
+          Direct upload writes one atomic commit to <code>main</code> containing only
+          <code>metadata.json</code>, <code>tune.msq</code>, and the matching
+          <code>mainController.ini</code> when the firmware is not already registered. The main ref
+          is never force-updated, so a concurrent repository change causes the upload to fail safely.
+          The ZIP option remains available for manual/offline submission.
         </p>
       </section>
 
       <footer>
-        Submission builder — local files remain in your browser unless you explicitly choose Submit to GitHub.
+        Submission builder — local files remain in your browser unless you explicitly choose Upload to main.
       </footer>
     </main>
   );
