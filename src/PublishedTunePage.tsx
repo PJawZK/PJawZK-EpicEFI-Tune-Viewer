@@ -93,11 +93,14 @@ export default function PublishedTunePage({
   }, [id]);
 
   useEffect(() => {
-    if (tab !== 'tune' || !metadata || tune || assetLoading || assetError) return;
+    if (tab !== 'tune' || !metadata) return;
 
     let active = true;
     setAssetLoading(true);
     setAssetError('');
+    setTune(null);
+    setIni(null);
+    setDefinitionSource('');
 
     const loadAssets = async () => {
       const msqText = await loadPublishedText(metadata.files.msq);
@@ -150,7 +153,7 @@ export default function PublishedTunePage({
     return () => {
       active = false;
     };
-  }, [assetError, assetLoading, metadata, tab, tune]);
+  }, [metadata, tab]);
 
   const vehicleLabel = useMemo(() => {
     if (!metadata) return '';
