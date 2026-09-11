@@ -13,6 +13,7 @@ import {
   type CurveComparison,
   type TableComparison,
 } from './compare';
+import SelectMenu from './SelectMenu';
 
 type TuneCompareProps = {
   navigate: (path: string) => void;
@@ -696,10 +697,15 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search setting, label or category…"
                 />
-                <select value={category} onChange={(event) => setCategory(event.target.value)}>
-                  <option>All</option>
-                  {result.categories.map((entry) => <option key={entry}>{entry}</option>)}
-                </select>
+                <SelectMenu
+                  value={category}
+                  onChange={setCategory}
+                  ariaLabel="Comparison category"
+                  options={[
+                    { value: 'All' },
+                    ...result.categories.map((entry) => ({ value: entry })),
+                  ]}
+                />
                 <label className="compare-checkbox">
                   <input
                     type="checkbox"
@@ -762,16 +768,15 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
               ) : activeTable && (
                 <>
                   <div className="compare-selector-row">
-                    <select
+                    <SelectMenu
                       value={activeTable.id}
-                      onChange={(event) => setSelectedTable(event.target.value)}
-                    >
-                      {visibleTables.map((entry) => (
-                        <option key={entry.id} value={entry.id}>
-                          {entry.title} · {entry.cellsChanged}/{entry.totalCells} cells
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedTable}
+                      ariaLabel="Select comparison table"
+                      options={visibleTables.map((entry) => ({
+                        value: entry.id,
+                        label: `${entry.title} · ${entry.cellsChanged}/${entry.totalCells} cells`,
+                      }))}
+                    />
 
                     <div className="compare-view-buttons">
                       {([
@@ -835,16 +840,15 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
               ) : activeCurve && (
                 <>
                   <div className="compare-selector-row">
-                    <select
+                    <SelectMenu
                       value={activeCurve.id}
-                      onChange={(event) => setSelectedCurve(event.target.value)}
-                    >
-                      {visibleCurves.map((entry) => (
-                        <option key={entry.id} value={entry.id}>
-                          {entry.title} · {entry.pointsChanged} changed value(s)
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedCurve}
+                      ariaLabel="Select comparison curve"
+                      options={visibleCurves.map((entry) => ({
+                        value: entry.id,
+                        label: `${entry.title} · ${entry.pointsChanged} changed value(s)`,
+                      }))}
+                    />
                   </div>
 
                   <div className="comparison-stat-strip">
