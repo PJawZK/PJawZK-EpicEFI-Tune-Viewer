@@ -79,7 +79,10 @@
     },
     "notes": { "type": "string" },
     "versionLabel": { "type": "string" },
-    "parentTuneId": { "type": "string" },
+    "parentTuneId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
     "files": {
       "type": "object",
       "additionalProperties": false,
