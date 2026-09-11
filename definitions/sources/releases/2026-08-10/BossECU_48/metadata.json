@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "BossECU_48",
+  "release": "2026-08-10",
+  "label": "BossECU_48 · 2026-08-10",
+  "source": "EpicEFI firmware milestone 2026-08-10 · rusefi_bundle_BossECU_48.zip",
+  "expectedSignature": "rusEFI master.2026.08.10.BossECU_48.4286153817"
+}

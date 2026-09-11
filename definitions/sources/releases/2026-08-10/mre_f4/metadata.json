@@ -1,0 +1,7 @@
+{
+  "ecuTarget": "mre_f4",
+  "release": "2026-08-10",
+  "label": "mre_f4 · 2026-08-10",
+  "source": "EpicEFI firmware milestone 2026-08-10 · rusefi_bundle_mre_f4.zip",
+  "expectedSignature": "rusEFI master.2026.08.10.mre_f4.192001023"
+}
