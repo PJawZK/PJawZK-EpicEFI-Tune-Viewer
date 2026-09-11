@@ -161,12 +161,40 @@ const initialForm: FormState = {
   parentTuneId: '',
 };
 
-function nextRevisionId(parentId: string, ids: Set<string>): string {
-  for (let revision = 2; revision < 1000; revision += 1) {
-    const candidate = `${parentId}-r${revision}`;
-    if (!ids.has(candidate)) return candidate;
+function lineageRootId(
+  tune: PublishedTuneMetadata,
+  byId: Map<string, PublishedTuneMetadata>,
+): string {
+  const seen = new Set<string>([tune.id]);
+  let cursor = tune;
+
+  while (cursor.parentTuneId) {
+    if (seen.has(cursor.parentTuneId)) break;
+    seen.add(cursor.parentTuneId);
+    const parent = byId.get(cursor.parentTuneId);
+    if (!parent) break;
+    cursor = parent;
   }
-  return `${parentId}-revision-${Date.now()}`;
+
+  return cursor.id;
+}
+
+function nextRevisionIdentity(
+  rootId: string,
+  ids: Set<string>,
+): { id: string; label: string } {
+  for (let revision = 2; revision < 1000; revision += 1) {
+    const candidate = `${rootId}-r${revision}`;
+    if (!ids.has(candidate)) {
+      return { id: candidate, label: `R${revision}` };
+    }
+  }
+
+  const stamp = Date.now();
+  return {
+    id: `${rootId}-revision-${stamp}`,
+    label: `Revision ${stamp}`,
+  };
 }
 
 function lineageWouldCycle(
@@ -475,11 +503,14 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         const index = await loadTuneIndex();
         if (!active) return;
         const ids = new Set(index.tunes.map((entry) => entry.id));
+        const byId = new Map(index.tunes.map((entry) => [entry.id, entry]));
+        const rootId = lineageRootId(published, byId);
+        const identity = nextRevisionIdentity(rootId, ids);
         const revisionForm = formFromMetadata(published);
-        revisionForm.id = nextRevisionId(published.id, ids);
+        revisionForm.id = identity.id;
         revisionForm.parentTuneId = published.id;
         revisionForm.validationStatus = 'Unverified';
-        revisionForm.versionLabel = '';
+        revisionForm.versionLabel = identity.label;
         setForm(revisionForm);
         setOriginalPublishedAt('');
       } else {
@@ -1148,7 +1179,11 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               disabled={Boolean(editId)}
             />
             {editId && <small>Published Tune IDs stay fixed so links and lineage remain stable.</small>}
-            {isRevision && <small>A new revision ID is suggested automatically; change it before publishing if desired.</small>}
+            {isRevision && (
+              <small>
+                A lineage-wide revision ID is suggested automatically; the source tune stays unchanged.
+              </small>
+            )}
           </div>
           <TextField
             label="Author / uploader"
@@ -1307,7 +1342,15 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <TextField label="Stock power (hp)" type="number" value={form.stockPowerHp} onChange={(value) => update('stockPowerHp', value)} />
           <TextField label="Torque (Nm)" type="number" value={form.torqueNm} onChange={(value) => update('torqueNm', value)} />
           <TextField label="Boost (bar)" type="number" step="0.01" value={form.boostBar} onChange={(value) => update('boostBar', value)} />
-          <TextField label="Version label" value={form.versionLabel} onChange={(value) => update('versionLabel', value)} placeholder="v1 / 2026-09 / ..." />
+          <div className="submit-field-lock">
+            <TextField
+              label="Version label"
+              value={form.versionLabel}
+              onChange={(value) => update('versionLabel', value)}
+              placeholder="R2 / v2.1 / 2026-09 / ..."
+            />
+            {isRevision && <small>Suggested from the new revision number; editable before publishing.</small>}
+          </div>
           <div className="submit-field-lock">
             <TextField
               label="Parent tune ID"
