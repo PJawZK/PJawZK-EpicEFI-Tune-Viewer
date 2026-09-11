@@ -2479,3 +2479,251 @@ footer {
     flex-direction: column;
   }
 }
+
+
+.lineage-badge {
+  border-color: #405b68;
+  color: #a9c5d1;
+  background: #142027;
+}
+
+.lineage-version-badge {
+  border-color: #514c67;
+  color: #c3bdd8;
+  background: #1a1824;
+}
+
+.lineage-inline-link {
+  padding: 4px 7px;
+  border: 1px solid #3b505a;
+  border-radius: 999px;
+  color: #9bb9c6;
+  background: #121b1f;
+  font-size: .72rem;
+  cursor: pointer;
+}
+
+.lineage-inline-link:hover,
+.lineage-inline-link:focus-visible {
+  border-color: #6d8b98;
+  color: #e0edf2;
+  outline: none;
+}
+
+.lineage-history-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.lineage-history-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lineage-history-summary > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #303d43;
+  border-radius: 7px;
+  background: #101719;
+}
+
+.lineage-history-summary span {
+  color: #748992;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.lineage-history-summary strong {
+  overflow: hidden;
+  color: #e5eef1;
+  font-size: .92rem;
+  text-overflow: ellipsis;
+}
+
+.lineage-history-summary small {
+  overflow: hidden;
+  color: #80939b;
+  font-size: .7rem;
+  text-overflow: ellipsis;
+}
+
+.lineage-navigation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .75fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.lineage-nav-side,
+.lineage-current-state {
+  min-width: 0;
+}
+
+.lineage-nav-button,
+.lineage-nav-static,
+.lineage-current-state {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  padding: 10px 12px;
+  border: 1px solid #334149;
+  border-radius: 7px;
+  background: #101719;
+  text-align: left;
+}
+
+.lineage-nav-button {
+  color: #c4d2d8;
+  cursor: pointer;
+}
+
+.lineage-nav-button:hover,
+.lineage-nav-button:focus-visible {
+  border-color: #68818d;
+  background: #151f23;
+  outline: none;
+}
+
+.lineage-nav-side.next .lineage-nav-button,
+.lineage-nav-side.next .lineage-nav-static {
+  text-align: right;
+}
+
+.lineage-nav-button span,
+.lineage-nav-static span,
+.lineage-current-state span {
+  color: #72868f;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.lineage-nav-button strong,
+.lineage-nav-static strong,
+.lineage-current-state strong {
+  overflow: hidden;
+  color: #e5eef1;
+  font-size: .84rem;
+  text-overflow: ellipsis;
+}
+
+.lineage-nav-static.latest {
+  border-color: #3f5c4b;
+  background: #111b16;
+}
+
+.lineage-current-state {
+  border-color: #476653;
+  background: #121d17;
+  text-align: center;
+}
+
+.lineage-current-state small {
+  overflow: hidden;
+  color: #7f9387;
+  font-size: .68rem;
+  text-overflow: ellipsis;
+}
+
+.lineage-next-branches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 7px;
+}
+
+.lineage-branch-link {
+  display: grid;
+  gap: 3px;
+  padding: 9px 11px;
+  border: 1px solid #334149;
+  border-radius: 7px;
+  color: #b9cad1;
+  background: #11191c;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lineage-branch-link:hover,
+.lineage-branch-link:focus-visible {
+  border-color: #6c838e;
+  outline: none;
+}
+
+.lineage-branch-link span {
+  color: #7f99a5;
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.lineage-branch-link strong {
+  color: #e5eef1;
+  font-size: .82rem;
+}
+
+.lineage-card-marker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.lineage-state-pill {
+  padding: 2px 6px;
+  border: 1px solid #40515a;
+  border-radius: 999px;
+  color: #9bb0b9;
+  background: #151d21;
+  font-size: .6rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.lineage-state-pill.latest {
+  border-color: #456653;
+  color: #a8c9b1;
+  background: #142019;
+}
+
+.lineage-tune-card.root {
+  border-left-color: #61727a;
+}
+
+.lineage-tune-card.latest {
+  box-shadow: inset 3px 0 0 #52745e;
+}
+
+.lineage-explainer code {
+  color: #a9c1cb;
+}
+
+@media (max-width: 900px) {
+  .lineage-history-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lineage-navigation {
+    grid-template-columns: 1fr;
+  }
+
+  .lineage-nav-side.next .lineage-nav-button,
+  .lineage-nav-side.next .lineage-nav-static,
+  .lineage-current-state {
+    text-align: left;
+  }
+}
+
+@media (max-width: 600px) {
+  .lineage-history-summary {
+    grid-template-columns: 1fr;
+  }
+}
