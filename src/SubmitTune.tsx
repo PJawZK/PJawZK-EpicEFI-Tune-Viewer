@@ -711,9 +711,9 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
       `Tune ID: ${metadata.id}`,
       `Firmware signature: ${metadata.firmwareSignature}`,
       '',
-      'To publish during the GitHub prototype phase:',
-      `1. Add this folder under public/tunes/${metadata.id}/ in the repository.`,
-      '2. Open a pull request.',
+      'Repository package fallback:',
+      `1. Place this folder under public/tunes/${metadata.id}/ in the repository.`,
+      '2. Commit the folder to main.',
       '3. GitHub Actions validates the submission and regenerates the public Tune Hub index.',
       '4. Do not edit public/tunes/index.json manually.',
       '',
@@ -1045,17 +1045,20 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
             }}
             placeholder="Volvo B230FK 13T road tune"
           />
-          <TextField
-            label="Tune ID"
-            required
-            value={form.id}
-            onChange={(value) => {
-              setIdTouched(true);
-              update('id', slugify(value));
-            }}
-            placeholder="volvo-b230fk-13t-road"
-            disabled={Boolean(editId)}
-          />
+          <div className="submit-field-lock">
+            <TextField
+              label="Tune ID"
+              required
+              value={form.id}
+              onChange={(value) => {
+                setIdTouched(true);
+                update('id', slugify(value));
+              }}
+              placeholder="volvo-b230fk-13t-road"
+              disabled={Boolean(editId)}
+            />
+            {editId && <small>Published Tune IDs stay fixed so links and lineage remain stable.</small>}
+          </div>
           <TextField
             label="Author / uploader"
             required
@@ -1372,7 +1375,11 @@ export default function SubmitTune({ navigate, editId }: SubmitTuneProps) {
             disabled={validationErrors.length > 0 || packaging}
             onClick={() => void createPackage()}
           >
-            {packaging ? 'Creating package…' : 'Download submission ZIP instead'}
+            {packaging
+              ? 'Creating package…'
+              : editId
+                ? 'Download edited tune ZIP'
+                : 'Download submission ZIP instead'}
           </button>
           <a
             className="open-button secondary"
