@@ -5,6 +5,7 @@ import TuneHub from './TuneHub';
 import SubmitTune from './SubmitTune';
 import DefinitionHub from './DefinitionHub';
 import SubmitDefinition from './SubmitDefinition';
+import TuneCompare from './TuneCompare';
 
 type Route =
   | { kind: 'hub' }
@@ -12,6 +13,7 @@ type Route =
   | { kind: 'submit' }
   | { kind: 'definitions' }
   | { kind: 'submitDefinition' }
+  | { kind: 'compare' }
   | {
       kind: 'published';
       id: string;
@@ -27,6 +29,7 @@ function parseRoute(): Route {
 
   if (parts.length === 0) return { kind: 'hub' };
   if (parts[0] === 'local') return { kind: 'local' };
+  if (parts[0] === 'compare') return { kind: 'compare' };
   if (parts[0] === 'submit') return { kind: 'submit' };
   if (parts[0] === 'definitions' && parts[1] === 'submit') {
     return { kind: 'submitDefinition' };
@@ -106,6 +109,13 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={route.kind === 'compare' ? 'active' : ''}
+            onClick={() => navigate('/compare')}
+          >
+            Tune Compare
+          </button>
+          <button
+            type="button"
             className={route.kind === 'submit' ? 'active' : ''}
             onClick={() => navigate('/submit')}
           >
@@ -127,6 +137,7 @@ export default function App() {
 
       {route.kind === 'hub' && <TuneHub navigate={navigate} />}
       {route.kind === 'local' && <LocalTuneViewer />}
+      {route.kind === 'compare' && <TuneCompare navigate={navigate} />}
       {route.kind === 'submit' && <SubmitTune navigate={navigate} />}
       {route.kind === 'definitions' && <DefinitionHub navigate={navigate} />}
       {route.kind === 'submitDefinition' && <SubmitDefinition navigate={navigate} />}

@@ -1551,3 +1551,374 @@ footer {
     white-space: nowrap;
   }
 }
+
+
+.compare-loaders {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.compare-side {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #2d383d;
+  border-radius: 9px;
+  background: #141a1d;
+}
+
+.compare-side-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.compare-side-heading h2 {
+  margin: 3px 0 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.compare-side-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.compare-side-details > div {
+  padding: 10px 11px;
+  border: 1px solid #2b373d;
+  border-radius: 7px;
+  background: #111719;
+}
+
+.compare-side-details span {
+  display: block;
+  color: #71868f;
+  font-size: .65rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.compare-side-details strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: #dce7eb;
+  font-size: .76rem;
+}
+
+.compare-ini-card {
+  margin-top: 12px;
+}
+
+.compare-empty {
+  margin-top: 20px;
+}
+
+.compare-compatibility {
+  display: grid;
+  gap: 9px;
+  margin-top: 20px;
+  padding: 13px 15px;
+  border: 1px solid #34464e;
+  border-radius: 8px;
+  background: #12191c;
+}
+
+.compare-compatibility.compatible {
+  border-color: #395143;
+  background: #111a16;
+}
+
+.compare-compatibility.intersection {
+  border-color: #5c4e35;
+  background: #1b1811;
+}
+
+.compare-compatibility span {
+  display: block;
+  color: #71868f;
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.compare-compatibility strong {
+  display: block;
+  margin-top: 3px;
+  color: #e1eaed;
+}
+
+.compare-compatibility code {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #9db1ba;
+  font-size: .72rem;
+}
+
+.compare-tabs button:disabled {
+  cursor: not-allowed;
+  opacity: .35;
+}
+
+.comparison-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.comparison-summary-grid > div,
+.comparison-stat-strip span {
+  padding: 10px 12px;
+  border: 1px solid #2c383e;
+  border-radius: 7px;
+  background: #111719;
+}
+
+.comparison-summary-grid span {
+  display: block;
+  color: #71868f;
+  font-size: .65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.comparison-summary-grid strong {
+  display: block;
+  margin-top: 4px;
+  color: #e4edef;
+  font-size: 1.05rem;
+}
+
+.comparison-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.comparison-categories span {
+  padding: 4px 8px;
+  border: 1px solid #2d393f;
+  border-radius: 999px;
+  color: #8ea4ad;
+  background: #111719;
+  font-size: .72rem;
+}
+
+.compare-filter-row,
+.compare-selector-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.compare-filter-row select,
+.compare-selector-row select {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #35434a;
+  border-radius: 6px;
+  color: #dce7eb;
+  background: #111719;
+}
+
+.compare-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #98acb5;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.compare-checkbox input {
+  margin: 0;
+}
+
+.compare-settings-table td:first-child strong {
+  display: block;
+  color: #dfe9ed;
+}
+
+.compare-settings-table td:first-child code {
+  display: block;
+  margin-top: 3px;
+  color: #70858e;
+  font-size: .69rem;
+}
+
+.compare-row-changed {
+  background: #151d20;
+}
+
+.compare-selector-row {
+  grid-template-columns: minmax(260px, 1fr) auto;
+}
+
+.compare-view-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.compare-view-buttons button {
+  padding: 8px 10px;
+  border: 1px solid #344149;
+  border-radius: 6px;
+  color: #8ea4ad;
+  background: #111719;
+  cursor: pointer;
+}
+
+.compare-view-buttons button.active {
+  border-color: #728790;
+  color: #eef5f7;
+  background: #202a2f;
+}
+
+.comparison-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.comparison-stat-strip span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  color: #71868f;
+  font-size: .72rem;
+}
+
+.comparison-stat-strip strong {
+  color: #dce7eb;
+}
+
+.compare-grid-wrap {
+  margin-top: 12px;
+}
+
+.compare-cell-changed {
+  background: #202a2f;
+  font-weight: 700;
+}
+
+.curve-legend {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin: 12px 0 8px;
+  color: #8ea3ac;
+  font-size: .75rem;
+}
+
+.curve-legend span {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+}
+
+.curve-key {
+  width: 20px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.curve-key-a,
+.compare-curve-a {
+  stroke: #d8e4e9;
+  background: #d8e4e9;
+}
+
+.curve-key-b,
+.compare-curve-b {
+  stroke: #7ea0ad;
+  background: #7ea0ad;
+}
+
+.compare-curve-a,
+.compare-curve-b {
+  stroke-width: 2.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.compare-point-a {
+  fill: #d8e4e9;
+  stroke: #101517;
+  stroke-width: 1.2;
+}
+
+.compare-point-b {
+  fill: #7ea0ad;
+  stroke: #101517;
+  stroke-width: 1.2;
+}
+
+.compare-curve-values > div {
+  grid-template-columns: auto 1fr auto;
+}
+
+.compare-curve-values em {
+  color: #88a2ad;
+  font-style: normal;
+}
+
+.compare-report-preview {
+  max-height: 620px;
+  overflow: auto;
+  margin: 14px 0 0;
+  padding: 14px;
+  border: 1px solid #2c383e;
+  border-radius: 7px;
+  color: #aabcc4;
+  background: #101517;
+  font-size: .74rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 1050px) {
+  .comparison-summary-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .compare-filter-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .compare-filter-row .compare-checkbox {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .compare-loaders {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compare-filter-row,
+  .compare-selector-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-view-buttons {
+    width: 100%;
+  }
+
+  .compare-view-buttons button {
+    flex: 1 1 auto;
+  }
+}
