@@ -7,6 +7,7 @@ import type {
   TuneConstant,
 } from './model';
 import { parseIni } from './ini';
+import { resolveIniText } from './iniExpression';
 import { parseMsq } from './msq';
 import './styles.css';
 
@@ -50,10 +51,12 @@ function TablePreview({
   table,
   tuneMap,
   definitionMap,
+  ini,
 }: {
   table: IniTableDefinition;
   tuneMap: Map<string, TuneConstant>;
   definitionMap: Map<string, IniConstantDefinition>;
+  ini: ParsedIni;
 }) {
   const x = tuneMap.get(table.xBins);
   const y = tuneMap.get(table.yBins);
@@ -76,8 +79,14 @@ function TablePreview({
     );
   }
 
+  const xDefinition = definitionMap.get(table.xBins);
+  const yDefinition = definitionMap.get(table.yBins);
   const zDefinition = definitionMap.get(table.zBins);
-  const units = zDefinition?.units || z.units || '';
+  const xLabel = resolveIniText(table.xLabel, ini, tuneMap, definitionMap) || 'X';
+  const yLabel = resolveIniText(table.yLabel, ini, tuneMap, definitionMap) || 'Y';
+  const xUnits = resolveIniText(xDefinition?.units || x.units || '', ini, tuneMap, definitionMap);
+  const yUnits = resolveIniText(yDefinition?.units || y.units || '', ini, tuneMap, definitionMap);
+  const units = resolveIniText(zDefinition?.units || z.units || '', ini, tuneMap, definitionMap);
 
   return (
     <>
@@ -90,7 +99,10 @@ function TablePreview({
         <table className="calibration-grid">
           <thead>
             <tr>
-              <th>{table.yLabel || 'Y'} \ {table.xLabel || 'X'}</th>
+              <th>
+                {yLabel}{yUnits && yUnits !== yLabel ? ` (${yUnits})` : ''} \{' '}
+                {xLabel}{xUnits && xUnits !== xLabel ? ` (${xUnits})` : ''}
+              </th>
               {xValues.map((value, index) => (
                 <th key={`x-${index}`}>{value}</th>
               ))}
@@ -388,6 +400,7 @@ export default function App() {
                   table={selectedTable}
                   tuneMap={tuneMap}
                   definitionMap={definitionMap}
+                  ini={ini}
                 />
               </>
             ) : (
