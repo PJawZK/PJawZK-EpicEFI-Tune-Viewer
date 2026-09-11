@@ -6,12 +6,12 @@ export type PublicSubmissionResult = {
   commitUrl: string;
 };
 
-function envValue(name: 'VITE_PUBLIC_SUBMISSION_ENDPOINT' | 'VITE_TURNSTILE_SITE_KEY'): string {
-  return String(import.meta.env[name] ?? '').trim();
-}
-
-export const publicSubmissionEndpoint = envValue('VITE_PUBLIC_SUBMISSION_ENDPOINT').replace(/\/$/, '');
-export const publicTurnstileSiteKey = envValue('VITE_TURNSTILE_SITE_KEY');
+export const publicSubmissionEndpoint = String(
+  import.meta.env.VITE_PUBLIC_SUBMISSION_ENDPOINT ?? '',
+).trim().replace(/\/$/, '');
+export const publicTurnstileSiteKey = String(
+  import.meta.env.VITE_TURNSTILE_SITE_KEY ?? '',
+).trim();
 export const publicSubmissionEnabled = Boolean(
   publicSubmissionEndpoint && publicTurnstileSiteKey,
 );
@@ -21,11 +21,13 @@ export async function submitTuneToPublicService({
   msq,
   ini,
   turnstileToken,
+  parentMetadataSnapshot,
 }: {
   metadata: unknown;
   msq: File;
   ini?: File;
   turnstileToken: string;
+  parentMetadataSnapshot?: string;
 }): Promise<PublicSubmissionResult> {
   if (!publicSubmissionEnabled) {
     throw new Error('Public submission service is not configured on this deployment.');
@@ -39,6 +41,9 @@ export async function submitTuneToPublicService({
   body.append('msq', msq, 'tune.msq');
   if (ini) body.append('ini', ini, 'mainController.ini');
   body.append('turnstileToken', turnstileToken);
+  if (parentMetadataSnapshot) {
+    body.append('parentMetadataSnapshot', parentMetadataSnapshot);
+  }
 
   const response = await fetch(
     `${publicSubmissionEndpoint}/v1/submissions`,
