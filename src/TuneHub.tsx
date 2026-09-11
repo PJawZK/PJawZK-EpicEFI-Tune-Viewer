@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublishedTuneMetadata } from './model';
-import { isBaseTune, tuneEngineFacet, tuneVehicleMakeFacet } from './tuneDiscovery';
+import {
+  ecuCollectionPath,
+  engineCollectionPath,
+  isBaseTune,
+  tuneEngineFacet,
+  tuneVehicleMakeFacet,
+  vehicleCollectionPath,
+} from './tuneDiscovery';
 import { loadTuneIndex } from './tuneLibrary';
 import SelectMenu from './SelectMenu';
 
@@ -91,9 +98,35 @@ function TuneCard({
       <div className="tune-card-top">
         <div>
           <p className="eyebrow">
-            {baseTune ? 'EpicEFI Base Map' : (vehicle || 'Community tune')}
+            {baseTune ? (
+              <button
+                type="button"
+                className="metadata-link metadata-link-compact button-reset"
+                onClick={() => navigate('/browse/base-maps')}
+              >
+                EpicEFI Base Map
+              </button>
+            ) : tune.vehicle?.make ? (
+              <button
+                type="button"
+                className="metadata-link metadata-link-compact button-reset"
+                onClick={() => navigate(vehicleCollectionPath(tune))}
+              >
+                {vehicle || 'Vehicle collection'}
+              </button>
+            ) : (
+              'Community tune'
+            )}
           </p>
-          {baseTune && vehicle && <span className="tune-card-context">{vehicle}</span>}
+          {baseTune && vehicle && (
+            <button
+              type="button"
+              className="tune-card-context metadata-link button-reset"
+              onClick={() => navigate(vehicleCollectionPath(tune))}
+            >
+              {vehicle}
+            </button>
+          )}
           <h3>{tune.title}</h3>
         </div>
         <div className="tune-card-badges">
@@ -118,7 +151,15 @@ function TuneCard({
       )}
 
       <div className="tune-card-specs">
-        {engine && <span>{engine}</span>}
+        {engine && (
+          <button
+            type="button"
+            className="metadata-link metadata-chip button-reset"
+            onClick={() => navigate(engineCollectionPath(tune))}
+          >
+            {engine}
+          </button>
+        )}
         {tune.fuel && <span>{tune.fuel}</span>}
         {tune.powerHp && <span>{tune.powerHp} hp</span>}
         {tune.boostBar !== undefined && <span>{tune.boostBar} bar</span>}
@@ -136,7 +177,13 @@ function TuneCard({
       <div className="tune-card-meta">
         <div>
           <span>ECU</span>
-          <strong>{tune.ecuTarget}</strong>
+          <button
+            type="button"
+            className="metadata-link button-reset"
+            onClick={() => navigate(ecuCollectionPath(tune.ecuTarget))}
+          >
+            {tune.ecuTarget}
+          </button>
         </div>
         <div>
           <span>Author</span>
@@ -330,7 +377,10 @@ export default function TuneHub({ navigate }: TuneHubProps) {
           </p>
         </div>
         <div className="hub-hero-actions">
-          <button type="button" className="open-button button-reset" onClick={() => navigate('/local')}>
+          <button type="button" className="open-button button-reset" onClick={() => navigate('/browse')}>
+            Browse collections
+          </button>
+          <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/local')}>
             Open local tune
           </button>
           <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/submit')}>
@@ -346,10 +396,10 @@ export default function TuneHub({ navigate }: TuneHubProps) {
             <strong>{tunes.length}</strong>
             <small>Entire public catalog</small>
           </button>
-          <button type="button" className="hub-summary-card base" onClick={() => setScope('base')}>
+          <button type="button" className="hub-summary-card base" onClick={() => navigate('/browse/base-maps')}>
             <span>Base maps</span>
             <strong>{baseTuneCount}</strong>
-            <small>EpicEFI reference starting points</small>
+            <small>Open structured Base Map collection</small>
           </button>
           <button type="button" className="hub-summary-card" onClick={() => setScope('community')}>
             <span>Community tunes</span>
