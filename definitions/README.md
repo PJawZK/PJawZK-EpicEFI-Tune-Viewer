@@ -1,37 +1,43 @@
 # EpicEFI definition registry
 
-The Tune Viewer uses an exact-signature public definition registry so a user normally only needs to open an `.msq`.
+The definition registry is an optional future convenience layer for the Tune Viewer. It must not limit the viewer to one firmware, board, or release.
 
-## Runtime layout
+## Core compatibility rule
 
-The deployed registry lives under `public/definitions/`:
+Every tune is interpreted only against an **exact matching firmware definition**.
+
+If a firmware signature is not available in a public registry, the user can load the exact matching `mainController.ini` locally. The viewer must never silently choose a nearby version or another ECU target.
+
+## Current prototype state
+
+The active public registry is intentionally empty while the Tune Hub and INI-driven browser are developed.
 
 ```text
 public/definitions/
-├── registry.json
-└── mega144h7/
-    └── 2026-08-26-2273317132/
-        └── definition-pack.json.gz
+└── registry.json
 ```
 
-`registry.json` maps the exact TunerStudio firmware signature to a compact definition pack and records its SHA-256 digest.
+This means V0.3 does not have a hardcoded supported-firmware list. Arbitrary EpicEFI firmware can be tested by supplying its matching INI.
 
-The current first registered definition is:
+## Future registry
 
-- ECU target: `MEGA144H7`
-- signature: `rusEFI master.2026.08.26.MEGA144H7.2273317132`
-- settings: 5,584
-- TableEditor definitions: 122
-- compact gzip size: about 54 KiB
+A mature registry may contain many independently versioned definitions:
 
-The pack was derived from the exact generated `mainController.ini` used for the first real browser acceptance test. It contains viewer metadata rather than the full generated INI: setting identities/types/offsets/units, table bindings and the dynamic label data required by the current viewer.
+```text
+definitions/
+├── registry.json
+├── mega144h7/
+│   ├── <firmware-a>/
+│   └── <firmware-b>/
+├── another-target/
+│   └── <firmware-c>/
+└── ...
+```
 
-## Safety rule
+A registry entry should be keyed by the complete TunerStudio signature and should include integrity metadata for the corresponding viewer definition pack.
 
-Definition resolution is exact-signature only.
+## Intended publication path
 
-If the MSQ signature is not present in the registry, the viewer asks for the exact matching `mainController.ini` locally. It must not silently select a different firmware version.
+The preferred long-term path is for EpicEFI firmware CI to publish/update definition packs whenever supported firmware builds are produced. The viewer frontend should not need source changes when another firmware definition is added.
 
-## Future publication
-
-The intended production path is for EpicEFI firmware CI to publish/update definition packs and the registry whenever supported firmware builds are produced. The viewer itself should not need source changes to add another registered definition.
+The registry remains separate from tune-library publication: a public tune may reference a known registry definition or include/require its exact custom INI when appropriate.
