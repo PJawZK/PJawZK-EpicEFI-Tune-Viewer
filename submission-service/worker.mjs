@@ -343,8 +343,8 @@ async function verifyTurnstile(request, env, token) {
     throw error;
   }
 
-  const expectedHostname = env.TURNSTILE_EXPECTED_HOSTNAME?.trim();
-  if (expectedHostname && result.hostname !== expectedHostname) {
+  const expectedHostname = requireEnv(env, 'TURNSTILE_EXPECTED_HOSTNAME');
+  if (result.hostname !== expectedHostname) {
     const error = new Error('Anti-bot verification hostname did not match the Tune Viewer site.');
     error.status = 403;
     throw error;
