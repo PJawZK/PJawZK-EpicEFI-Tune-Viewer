@@ -7,7 +7,8 @@ It is deliberately **create-only**:
 - create a new Tune ID
 - create a new revision with `parentTuneId`
 - never edit or overwrite an existing Tune ID
-- always publish public submissions as `Unverified`
+- preserve normal self-declared validation states
+- never allow public submission to assign `EpicEFI Verified`
 
 Trusted repository writers continue to use the browser PAT path for same-ID edits and administrative publication.
 
@@ -33,7 +34,7 @@ The GitHub App should be installed only on:
 
 and require only repository **Contents: Read and write** permission.
 
-Public submissions cannot grant themselves `EpicEFI Verified` or any other higher validation state. The service rewrites the submitted validation status to `Unverified`.
+Public submissions cannot grant themselves `EpicEFI Verified`. Other normal validation states such as Road Tested or Dyno Tested remain available as self-declared metadata, consistent with the existing Tune Viewer model.
 
 ## 1. Create the GitHub App
 
@@ -93,11 +94,7 @@ wrangler secret put TURNSTILE_SECRET_KEY
 
 For the private key, paste the full PEM including its BEGIN/END lines.
 
-Optional:
-
-```sh
-wrangler secret put TURNSTILE_EXPECTED_HOSTNAME
-```
+Set `TURNSTILE_EXPECTED_HOSTNAME` in the copied Wrangler vars to the exact hostname used by the Tune Viewer page. Hostname matching is mandatory.
 
 Deploy from `submission-service/` using the copied Wrangler configuration.
 
