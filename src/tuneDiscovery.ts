@@ -16,11 +16,19 @@ function same(left: string | undefined, right: string | undefined): boolean {
   return Boolean(a && b && a === b);
 }
 
+const genericDiscoveryTags = new Set([
+  'epicefi',
+  'epicefi base map',
+  'base map',
+  'base tune',
+  'generic',
+]);
+
 function tagSet(tune: PublishedTuneMetadata): Set<string> {
   return new Set(
     tune.tags
       .map((tag) => normalized(tag))
-      .filter(Boolean),
+      .filter((tag) => Boolean(tag) && !genericDiscoveryTags.has(tag)),
   );
 }
 
@@ -106,11 +114,6 @@ export function rankRelatedTunes(
         reasons.push('Same author');
       }
 
-      if (reference.classification === candidate.classification) {
-        score += 2;
-        reasons.push(candidate.classification);
-      }
-
       const candidateTags = tagSet(candidate);
       const sharedTags = [...referenceTags]
         .filter((tag) => candidateTags.has(tag))
@@ -127,7 +130,7 @@ export function rankRelatedTunes(
         reasons: [...new Set(reasons)].slice(0, 4),
       };
     })
-    .filter((entry) => entry.score > 0)
+    .filter((entry) => entry.score >= 6)
     .sort((left, right) => {
       if (left.score !== right.score) return right.score - left.score;
       const leftTime = new Date(left.tune.publishedAt).getTime();
