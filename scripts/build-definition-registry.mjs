@@ -9,7 +9,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import path from 'node:path';
-import ts from 'typescript';
+import * as ts from 'typescript';
 
 const root = process.cwd();
 const sourcesRoot = path.join(root, 'definitions', 'sources');
