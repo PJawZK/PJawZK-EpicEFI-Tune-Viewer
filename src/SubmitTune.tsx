@@ -1450,7 +1450,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         <div className="github-submit-panel">
           <div className="github-submit-heading">
             <div>
-              <p className="eyebrow">Direct GitHub upload</p>
+              <p className="eyebrow">Trusted-writer GitHub upload</p>
               <h3>
                 {editId
                   ? 'Save changes directly to main'
@@ -1472,10 +1472,13 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               placeholder="github_pat_… or ghp_…"
             />
             <small>
-              Use a fine-grained personal access token with resource owner <strong>PJawZK</strong>,
-              repository access limited to <strong>PJawZK-EpicEFI-Tune-Viewer</strong>, and
-              <strong>Contents: Read and write</strong>. Uploads now use GitHub's Contents API rather than
-              the Git Data blob API for fine-grained-token compatibility. The token is held only in page memory.
+              Direct-to-main upload is currently for the repository owner and trusted writers.
+              The owner <strong>PJawZK</strong> can use a fine-grained personal access token limited to
+              <strong>PJawZK-EpicEFI-Tune-Viewer</strong> with <strong>Contents: Read and write</strong>.
+              Repository collaborators must use a GitHub token that can write this repository; GitHub may require
+              a classic personal access token for collaborator access to a personal-account repository.
+              Public community submission without a GitHub account will use a separate submission service and is
+              not enabled yet. The token is held only in page memory.
             </small>
           </label>
 
@@ -1498,7 +1501,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
                       : 'Published directly to main'}
                 </strong>
                 <span>
-                  {githubResult.targetRepository} · {githubResult.commitSha.slice(0, 12)}
+                  @{githubResult.login} · write access confirmed · {githubResult.targetRepository} · {githubResult.commitSha.slice(0, 12)}
                 </span>
               </div>
               <a
@@ -1541,7 +1544,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               target="_blank"
               rel="noreferrer"
             >
-              Create fine-grained token
+              Create owner fine-grained token
             </a>
           </div>
         </div>
