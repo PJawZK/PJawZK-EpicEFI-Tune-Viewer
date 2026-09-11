@@ -179,6 +179,24 @@ Collection detail pages retain tune search, validation/classification filters an
 
 Vehicle, engine and ECU metadata on Tune Hub cards, author tune cards and published tune info pages link directly into the matching collection. Author names continue to use their existing author pages.
 
+## Richer tune presentation
+
+V0.10.2 improves how published tunes are evaluated at a glance without adding image or thumbnail requirements.
+
+Tune Hub, collection and author cards now surface:
+
+- stronger validation-state hierarchy
+- revision/base-map identity
+- compact power, torque, boost and injector metrics when metadata exists
+- concise firmware summaries while preserving the exact signature on the tune page
+- original publication date and later same-ID edit date
+- tighter tag presentation
+- clearer Base Map identity
+
+Published tune Info pages now begin with an **At a glance** summary showing vehicle, engine, ECU target, fuel/aspiration, key metrics, firmware summary, validation state, tune identity and publication/update state.
+
+Base Maps receive a dedicated reference-starting-point safety callout. Exact firmware signature matching remains the compatibility authority.
+
 ## Deliberately deferred
 
 - ECU write/control
@@ -212,7 +230,7 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.10.1 prototype.** Tune Hub now supports structured browsing by Base Maps, vehicle make/model, engine make/code, ECU target and author, while retaining search/filter/sort inside collection detail pages. Tune-card and published-tune metadata link directly into those collections. V0.10 facets/related-tune discovery, V0.9 lineage/history/author pages and the V0.8 compare/direct-publish workflows remain in place.
+**V0.10.2 prototype.** Tune Hub, collection and author cards now expose a clearer validation/tune-state hierarchy, compact performance metrics, firmware summaries and publication/update state. Published tune Info pages add an At a glance summary and stronger Base Map reference treatment. V0.10.1 structured collections, V0.10 facets/related-tune discovery, V0.9 lineage/history/author pages and the V0.8 compare/direct-publish workflows remain in place.
 
 
 ## Multi-firmware definition pipeline
