@@ -611,14 +611,38 @@ footer {
   background: #101517;
 }
 
-.curve-chart line {
-  stroke: #52636c;
+.curve-grid {
+  stroke: #263138;
   stroke-width: 1;
 }
 
-.curve-chart polyline {
-  stroke: #c7d8df;
-  stroke-width: 2;
+.curve-axis-line {
+  stroke: #60727b;
+  stroke-width: 1.2;
+}
+
+.curve-line {
+  stroke: #d7e5eb;
+  stroke-width: 2.2;
+}
+
+.curve-point {
+  fill: #d7e5eb;
+  stroke: #101517;
+  stroke-width: 1.2;
+}
+
+.curve-tick {
+  fill: #71868f;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.curve-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
 }
 
 .curve-axis {
