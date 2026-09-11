@@ -139,3 +139,45 @@ export function rankRelatedTunes(
     })
     .slice(0, limit);
 }
+
+
+function encoded(value: string): string {
+  return encodeURIComponent(value.trim());
+}
+
+export function vehicleCollectionPath(
+  tuneOrMake: PublishedTuneMetadata | string,
+  model?: string,
+): string {
+  const make = typeof tuneOrMake === 'string'
+    ? tuneOrMake
+    : tuneOrMake.vehicle?.make ?? '';
+  const resolvedModel = typeof tuneOrMake === 'string'
+    ? model ?? ''
+    : tuneOrMake.vehicle?.model ?? '';
+
+  if (!make.trim()) return '/browse/vehicles';
+  if (!resolvedModel.trim()) return `/browse/vehicle/${encoded(make)}`;
+  return `/browse/vehicle/${encoded(make)}/${encoded(resolvedModel)}`;
+}
+
+export function engineCollectionPath(
+  tuneOrMake: PublishedTuneMetadata | string,
+  code?: string,
+): string {
+  const make = typeof tuneOrMake === 'string'
+    ? tuneOrMake
+    : tuneOrMake.engine?.make ?? '';
+  const resolvedCode = typeof tuneOrMake === 'string'
+    ? code ?? ''
+    : tuneOrMake.engine?.code ?? '';
+
+  if (!make.trim() && !resolvedCode.trim()) return '/browse/engines';
+  return `/browse/engine/${encoded(make || '~')}/${encoded(resolvedCode || '~')}`;
+}
+
+export function ecuCollectionPath(target: string): string {
+  return target.trim()
+    ? `/browse/ecu/${encoded(target)}`
+    : '/browse/ecus';
+}

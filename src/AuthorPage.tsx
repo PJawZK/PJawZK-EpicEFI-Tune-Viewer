@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PublishedTuneMetadata } from './model';
 import SelectMenu from './SelectMenu';
+import {
+  ecuCollectionPath,
+  engineCollectionPath,
+  vehicleCollectionPath,
+} from './tuneDiscovery';
 import { findPublishedTune, loadTuneIndex } from './tuneLibrary';
 
 type AuthorPageProps = {
@@ -77,7 +82,19 @@ function AuthorTuneCard({
     <article className="author-tune-card">
       <div className="author-tune-card-top">
         <div>
-          <p className="eyebrow">{vehicle || 'EpicEFI tune'}</p>
+          <p className="eyebrow">
+            {tune.vehicle?.make ? (
+              <button
+                type="button"
+                className="metadata-link metadata-link-compact button-reset"
+                onClick={() => navigate(vehicleCollectionPath(tune))}
+              >
+                {vehicle || 'Vehicle collection'}
+              </button>
+            ) : (
+              'EpicEFI tune'
+            )}
+          </p>
           <h3>{tune.title}</h3>
           <small>{tune.versionLabel || tune.id}</small>
         </div>
@@ -90,8 +107,22 @@ function AuthorTuneCard({
       {tune.summary && <p>{tune.summary}</p>}
 
       <div className="author-tune-meta">
-        <span>{tune.ecuTarget}</span>
-        {engine && <span>{engine}</span>}
+        <button
+          type="button"
+          className="metadata-link button-reset"
+          onClick={() => navigate(ecuCollectionPath(tune.ecuTarget))}
+        >
+          {tune.ecuTarget}
+        </button>
+        {engine && (
+          <button
+            type="button"
+            className="metadata-link button-reset"
+            onClick={() => navigate(engineCollectionPath(tune))}
+          >
+            {engine}
+          </button>
+        )}
         <span>{formatDate(tune.publishedAt)}</span>
         {tune.parentTuneId && <span>Revision of {tune.parentTuneId}</span>}
       </div>
@@ -205,8 +236,8 @@ export default function AuthorPage({ author, navigate }: AuthorPageProps) {
     <main>
       <header className="author-hero">
         <div>
-          <button type="button" className="back-link" onClick={() => navigate('/')}>
-            ← Tune Hub
+          <button type="button" className="back-link" onClick={() => navigate('/browse/authors')}>
+            ← Browse authors
           </button>
           <p className="eyebrow">Tune author</p>
           <h1>{author}</h1>

@@ -12,7 +12,10 @@ import type {
 import { parseMsq } from './msq';
 import TuneBrowser from './TuneBrowser';
 import {
+  ecuCollectionPath,
+  engineCollectionPath,
   rankRelatedTunes,
+  vehicleCollectionPath,
   type RelatedTune,
 } from './tuneDiscovery';
 import {
@@ -34,16 +37,28 @@ type PublishedTunePageProps = {
 function InfoCell({
   label,
   value,
+  onClick,
 }: {
   label: string;
   value: string | number | null | undefined;
+  onClick?: () => void;
 }) {
   if (value === undefined || value === null || value === '') return null;
 
   return (
     <div className="detail">
       <span>{label}</span>
-      <strong>{value}</strong>
+      {onClick ? (
+        <button
+          type="button"
+          className="metadata-link detail-metadata-link button-reset"
+          onClick={onClick}
+        >
+          {value}
+        </button>
+      ) : (
+        <strong>{value}</strong>
+      )}
     </div>
   );
 }
@@ -498,9 +513,33 @@ export default function PublishedTunePage({
             </div>
 
             <div className="details-grid">
-              <InfoCell label="Vehicle" value={vehicleLabel} />
-              <InfoCell label="Engine make" value={metadata.engine?.make} />
-              <InfoCell label="Engine code" value={metadata.engine?.code} />
+              <InfoCell
+                label="Vehicle"
+                value={vehicleLabel}
+                onClick={
+                  metadata.vehicle?.make
+                    ? () => navigate(vehicleCollectionPath(metadata))
+                    : undefined
+                }
+              />
+              <InfoCell
+                label="Engine make"
+                value={metadata.engine?.make}
+                onClick={
+                  metadata.engine?.make || metadata.engine?.code
+                    ? () => navigate(engineCollectionPath(metadata))
+                    : undefined
+                }
+              />
+              <InfoCell
+                label="Engine code"
+                value={metadata.engine?.code}
+                onClick={
+                  metadata.engine?.make || metadata.engine?.code
+                    ? () => navigate(engineCollectionPath(metadata))
+                    : undefined
+                }
+              />
               <InfoCell label="Displacement" value={metadata.engine?.displacementLiters ? `${metadata.engine.displacementLiters} L` : null} />
               <InfoCell label="Cylinders" value={metadata.engine?.cylinders} />
               <InfoCell label="Aspiration" value={metadata.engine?.aspiration} />
@@ -523,7 +562,11 @@ export default function PublishedTunePage({
               </div>
             </div>
             <div className="details-grid">
-              <InfoCell label="ECU target" value={metadata.ecuTarget} />
+              <InfoCell
+                label="ECU target"
+                value={metadata.ecuTarget}
+                onClick={() => navigate(ecuCollectionPath(metadata.ecuTarget))}
+              />
               <InfoCell label="Firmware signature" value={metadata.firmwareSignature} />
               <InfoCell label="Validation" value={metadata.validationStatus} />
               <InfoCell label="Classification" value={metadata.classification} />
