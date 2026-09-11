@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   assertMetadataMatchesFinalFiles,
+  assertMetadataSnapshotMatches,
   assertTuneDeleteTargets,
   assertTuneMetadataIdentity,
   assertTuneWriteTargets,
@@ -157,3 +158,53 @@ assert.doesNotThrow(() => assertMetadataMatchesFinalFiles(
 ));
 
 console.log('Publication path/identity policy tests: PASS');
+
+
+assert.doesNotThrow(() => assertMetadataSnapshotMatches(
+  JSON.stringify({
+    id: 'volvo-940-r2',
+    title: 'Same tune',
+    files: { ini: 'mainController.ini', msq: 'tune.msq' },
+  }),
+  JSON.stringify({
+    files: { msq: 'tune.msq', ini: 'mainController.ini' },
+    title: 'Same tune',
+    id: 'volvo-940-r2',
+  }, null, 2),
+  'volvo-940-r2',
+));
+
+assert.throws(
+  () => assertMetadataSnapshotMatches(
+    JSON.stringify({ id: 'volvo-940-r2', title: 'Newer edit' }),
+    JSON.stringify({ id: 'volvo-940-r2', title: 'Loaded edit' }),
+    'volvo-940-r2',
+  ),
+  /changed after this page was loaded/,
+);
+
+const lineageMetadata = assertTuneMetadataIdentity(
+  {
+    id: 'child-r2',
+    firmwareSignature: 'EpicEFI.NEWFW.123',
+    parentTuneId: 'parent-tune',
+    files: { msq: 'tune.msq' },
+  },
+  'child-r2',
+  'EpicEFI.NEWFW.123',
+);
+assert.equal(lineageMetadata.parentTuneId, 'parent-tune');
+
+assert.throws(
+  () => assertTuneMetadataIdentity(
+    {
+      id: 'self-parent',
+      firmwareSignature: 'EpicEFI.NEWFW.123',
+      parentTuneId: 'self-parent',
+      files: { msq: 'tune.msq' },
+    },
+    'self-parent',
+    'EpicEFI.NEWFW.123',
+  ),
+  /cannot reference the tune itself/,
+);
