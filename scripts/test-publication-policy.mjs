@@ -157,9 +157,6 @@ assert.doesNotThrow(() => assertMetadataMatchesFinalFiles(
   new Set(['metadata.json', 'tune.msq']),
 ));
 
-console.log('Publication path/identity policy tests: PASS');
-
-
 assert.doesNotThrow(() => assertMetadataSnapshotMatches(
   JSON.stringify({
     id: 'volvo-940-r2',
@@ -208,3 +205,5 @@ assert.throws(
   ),
   /cannot reference the tune itself/,
 );
+
+console.log('Publication path/identity policy tests: PASS');
