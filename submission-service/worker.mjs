@@ -232,10 +232,15 @@ async function githubJson(url, options = {}) {
   if (!response.ok) {
     let message = `GitHub API returned ${response.status} ${response.statusText}.`;
     try {
-      const payload = await response.json();
+      const payload = await response.clone().json();
       if (payload?.message) message = payload.message;
     } catch {
-      // Keep HTTP status.
+      try {
+        const text = (await response.text()).trim();
+        if (text) message = `${message} ${text.slice(0, 512)}`;
+      } catch {
+        // Keep HTTP status.
+      }
     }
     throw httpError(
       appJwt
@@ -252,18 +257,12 @@ async function githubJson(url, options = {}) {
 async function installationToken(env) {
   const jwt = await createAppJwt(env);
   const installationId = requireEnv(env, 'GITHUB_INSTALLATION_ID');
-  const { repo } = repositoryConfig(env);
-
   const payload = await githubJson(
     `${GITHUB_API}/app/installations/${encodeURIComponent(installationId)}/access_tokens`,
     {
       token: jwt,
       method: 'POST',
       appJwt: true,
-      body: {
-        repositories: [repo],
-        permissions: { contents: 'write' },
-      },
     },
   );
 
@@ -690,7 +689,11 @@ export default {
         ? 'The public submission service could not complete this request.'
         : (error instanceof Error ? error.message : String(error));
 
-      console.error('public submission error', error);
+      console.error(
+        'public submission error',
+        error instanceof Error ? error.message : String(error),
+        error,
+      );
       return jsonResponse({ error: message }, safeStatus, origin);
     }
   },
