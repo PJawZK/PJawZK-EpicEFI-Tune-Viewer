@@ -32,9 +32,7 @@ const ENGINE_KEYS = new Set([
 ]);
 
 function fail(message, status = 400) {
-  const error = new Error(message);
-  error.status = status;
-  throw error;
+  throw Object.assign(new Error(message), { status });
 }
 
 function requireString(value, name, maxLength = 512) {
