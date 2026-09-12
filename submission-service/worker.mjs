@@ -55,14 +55,24 @@ function requireEnv(env, key) {
   return value.trim();
 }
 
+/**
+ * Create an Error carrying an HTTP response status without relying on
+ * an undeclared Error.status property in JavaScript type checking.
+ *
+ * @param {string} message
+ * @param {number} status
+ * @returns {Error & { status: number }}
+ */
+function httpError(message, status) {
+  return Object.assign(new Error(message), { status });
+}
+
 function assertOrigin(request, env) {
   const configured = requireEnv(env, 'PUBLIC_SITE_ORIGIN').replace(/\/$/, '');
   const origin = (request.headers.get('Origin') || '').replace(/\/$/, '');
 
   if (!origin || origin !== configured) {
-    const error = new Error('This submission origin is not allowed.');
-    error.status = 403;
-    throw error;
+    throw httpError('This submission origin is not allowed.', 403);
   }
   return configured;
 }
@@ -187,13 +197,25 @@ async function createAppJwt(env) {
   return `${unsigned}.${base64Url(signature)}`;
 }
 
-async function githubJson(url, {
-  token,
-  method = 'GET',
-  body,
-  allow404 = false,
-  appJwt = false,
-} = {}) {
+/**
+ * @param {string} url
+ * @param {{
+ *   token?: string,
+ *   method?: string,
+ *   body?: unknown,
+ *   allow404?: boolean,
+ *   appJwt?: boolean,
+ * }} [options]
+ * @returns {Promise<any>}
+ */
+async function githubJson(url, options = {}) {
+  const {
+    token,
+    method = 'GET',
+    body,
+    allow404 = false,
+    appJwt = false,
+  } = options;
   const response = await fetch(url, {
     method,
     headers: {
@@ -215,13 +237,11 @@ async function githubJson(url, {
     } catch {
       // Keep HTTP status.
     }
-    const error = new Error(
+    throw httpError(
       appJwt
         ? `GitHub App authentication failed: ${message}`
         : `GitHub repository request failed: ${message}`,
-    );
-    error.status = response.status >= 500 ? 502 : 500;
-    throw error;
+    , response.status >= 500 ? 502 : 500);
   }
 
   if (response.status === 204) return null;
@@ -311,9 +331,7 @@ async function deleteFile(token, config, path, sha, message) {
 async function verifyTurnstile(request, env, token) {
   const secret = requireEnv(env, 'TURNSTILE_SECRET_KEY');
   if (typeof token !== 'string' || token.trim() === '' || token.length > 2048) {
-    const error = new Error('Complete the anti-bot verification before submitting.');
-    error.status = 400;
-    throw error;
+    throw httpError('Complete the anti-bot verification before submitting.', 400);
   }
 
   const response = await fetch(
@@ -331,41 +349,31 @@ async function verifyTurnstile(request, env, token) {
   );
 
   if (!response.ok) {
-    const error = new Error('Anti-bot verification service is temporarily unavailable.');
-    error.status = 503;
-    throw error;
+    throw httpError('Anti-bot verification service is temporarily unavailable.', 503);
   }
 
   const result = await response.json();
   if (!result?.success) {
-    const error = new Error('Anti-bot verification failed or expired. Try the challenge again.');
-    error.status = 400;
-    throw error;
+    throw httpError('Anti-bot verification failed or expired. Try the challenge again.', 400);
   }
 
   const expectedHostname = requireEnv(env, 'TURNSTILE_EXPECTED_HOSTNAME');
   if (result.hostname !== expectedHostname) {
-    const error = new Error('Anti-bot verification hostname did not match the Tune Viewer site.');
-    error.status = 403;
-    throw error;
+    throw httpError('Anti-bot verification hostname did not match the Tune Viewer site.', 403);
   }
 
   const expectedAction = env.TURNSTILE_EXPECTED_ACTION?.trim() || 'submit_tune';
   if (result.action !== expectedAction) {
-    const error = new Error('Anti-bot verification action did not match this submission.');
-    error.status = 403;
-    throw error;
+    throw httpError('Anti-bot verification action did not match this submission.', 403);
   }
 }
 
 async function assertDestinationUnused(token, config, tuneId) {
   const existing = await getContent(token, config, `public/tunes/${tuneId}`);
   if (existing !== null) {
-    const error = new Error(
+    throw httpError(
       `Tune ID "${tuneId}" already exists. Public submissions can create new tunes or revisions, not overwrite existing tunes.`,
-    );
-    error.status = 409;
-    throw error;
+    , 409);
   }
 }
 
@@ -378,24 +386,18 @@ async function readLiveMetadata(token, config, tuneId) {
     true,
   );
   if (raw === null) {
-    const error = new Error(`Lineage tune "${tuneId}" does not exist on main.`);
-    error.status = 409;
-    throw error;
+    throw httpError(`Lineage tune "${tuneId}" does not exist on main.`, 409);
   }
 
   let metadata;
   try {
     metadata = JSON.parse(raw);
   } catch {
-    const error = new Error(`Lineage tune "${tuneId}" has invalid repository metadata.`);
-    error.status = 409;
-    throw error;
+    throw httpError(`Lineage tune "${tuneId}" has invalid repository metadata.`, 409);
   }
 
   if (!metadata || typeof metadata !== 'object' || metadata.id !== tuneId) {
-    const error = new Error(`Lineage tune "${tuneId}" metadata identity is invalid.`);
-    error.status = 409;
-    throw error;
+    throw httpError(`Lineage tune "${tuneId}" metadata identity is invalid.`, 409);
   }
   return metadata;
 }
@@ -419,20 +421,16 @@ function assertParentSnapshotMatches(liveMetadata, expectedRaw, parentTuneId) {
   try {
     expected = JSON.parse(expectedRaw);
   } catch {
-    const error = new Error('Loaded parent metadata snapshot is invalid.');
-    error.status = 409;
-    throw error;
+    throw httpError('Loaded parent metadata snapshot is invalid.', 409);
   }
 
   if (
     JSON.stringify(canonicalizeJson(liveMetadata))
     !== JSON.stringify(canonicalizeJson(expected))
   ) {
-    const error = new Error(
+    throw httpError(
       `Lineage parent "${parentTuneId}" changed after this page was loaded. Reload before submitting the revision.`,
-    );
-    error.status = 409;
-    throw error;
+    , 409);
   }
 }
 
@@ -452,9 +450,7 @@ async function assertLiveLineage(
   while (cursor) {
     assertPublicTuneId(cursor, 'Lineage parent Tune ID');
     if (seen.has(cursor)) {
-      const error = new Error(`Lineage would create a cycle through "${cursor}".`);
-      error.status = 409;
-      throw error;
+      throw httpError(`Lineage would create a cycle through "${cursor}".`, 409);
     }
     seen.add(cursor);
 
@@ -465,9 +461,7 @@ async function assertLiveLineage(
     first = false;
     if (metadata.parentTuneId === undefined) break;
     if (typeof metadata.parentTuneId !== 'string' || !metadata.parentTuneId.trim()) {
-      const error = new Error(`Lineage tune "${cursor}" has invalid parentTuneId metadata.`);
-      error.status = 409;
-      throw error;
+      throw httpError(`Lineage tune "${cursor}" has invalid parentTuneId metadata.`, 409);
     }
     cursor = metadata.parentTuneId;
   }
@@ -521,9 +515,7 @@ async function cleanupCreated(token, config, created, tuneId) {
 async function submitTune(request, env, origin) {
   const contentType = request.headers.get('Content-Type') || '';
   if (!contentType.toLowerCase().startsWith('multipart/form-data')) {
-    const error = new Error('Public tune submission requires multipart/form-data.');
-    error.status = 415;
-    throw error;
+    throw httpError('Public tune submission requires multipart/form-data.', 415);
   }
 
   const form = await request.formData();
@@ -534,19 +526,13 @@ async function submitTune(request, env, origin) {
   const parentMetadataSnapshot = form.get('parentMetadataSnapshot');
 
   if (typeof metadataRaw !== 'string') {
-    const error = new Error('metadata field is required.');
-    error.status = 400;
-    throw error;
+    throw httpError('metadata field is required.', 400);
   }
   if (!(msq instanceof File)) {
-    const error = new Error('MSQ file is required.');
-    error.status = 400;
-    throw error;
+    throw httpError('MSQ file is required.', 400);
   }
   if (ini !== null && !(ini instanceof File)) {
-    const error = new Error('INI field must be a file when supplied.');
-    error.status = 400;
-    throw error;
+    throw httpError('INI field must be a file when supplied.', 400);
   }
 
   const metadataBytes = textBytes(metadataRaw);
@@ -563,9 +549,7 @@ async function submitTune(request, env, origin) {
     || iniBytes > MAX_INI_BYTES
     || total > MAX_TOTAL_BYTES
   ) {
-    const error = new Error('Public submission exceeds the service file-size limits.');
-    error.status = 413;
-    throw error;
+    throw httpError('Public submission exceeds the service file-size limits.', 413);
   }
 
   await verifyTurnstile(
