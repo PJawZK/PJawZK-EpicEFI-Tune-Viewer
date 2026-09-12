@@ -241,7 +241,7 @@ async function githubJson(url, options = {}) {
       appJwt
         ? `GitHub App authentication failed: ${message}`
         : `GitHub repository request failed: ${message}`,
-    , response.status >= 500 ? 502 : 500);
+    response.status >= 500 ? 502 : 500);
   }
 
   if (response.status === 204) return null;
@@ -373,7 +373,7 @@ async function assertDestinationUnused(token, config, tuneId) {
   if (existing !== null) {
     throw httpError(
       `Tune ID "${tuneId}" already exists. Public submissions can create new tunes or revisions, not overwrite existing tunes.`,
-    , 409);
+    409);
   }
 }
 
@@ -430,7 +430,7 @@ function assertParentSnapshotMatches(liveMetadata, expectedRaw, parentTuneId) {
   ) {
     throw httpError(
       `Lineage parent "${parentTuneId}" changed after this page was loaded. Reload before submitting the revision.`,
-    , 409);
+    409);
   }
 }
 
