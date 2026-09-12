@@ -4,6 +4,7 @@ import {
   extractIniSignature,
   extractMsqSignature,
   normalizePublicMetadata,
+  publicErrorStatus,
   validatePublicPackage,
 } from './validator.mjs';
 
@@ -27,6 +28,14 @@ const baseMetadata = {
 assert.equal(assertPublicTuneId('volvo-940-r2'), 'volvo-940-r2');
 assert.throws(() => assertPublicTuneId('../escape'), /may contain lowercase/);
 assert.throws(() => assertPublicTuneId('index.json'), /reserved/);
+
+try {
+  assertPublicTuneId('../escape');
+  assert.fail('Expected invalid Tune ID to throw.');
+} catch (error) {
+  assert.equal(publicErrorStatus(error), 400);
+}
+assert.equal(publicErrorStatus(new Error('plain failure')), 500);
 
 assert.equal(extractMsqSignature(msq), 'EpicEFI.NEW.123');
 assert.equal(extractIniSignature(ini), 'EpicEFI.NEW.123');
