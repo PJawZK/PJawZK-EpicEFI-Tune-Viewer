@@ -6,6 +6,7 @@ import {
 
 const GITHUB_API = 'https://api.github.com';
 const GITHUB_API_VERSION = '2026-03-10';
+const GITHUB_USER_AGENT = 'EpicEFI-Tune-Viewer-Public-Submission';
 const DEFAULT_OWNER = 'PJawZK';
 const DEFAULT_REPO = 'PJawZK-EpicEFI-Tune-Viewer';
 const DEFAULT_BRANCH = 'main';
@@ -222,6 +223,7 @@ async function githubJson(url, options = {}) {
       Accept: 'application/vnd.github+json',
       Authorization: `Bearer ${token}`,
       'X-GitHub-Api-Version': GITHUB_API_VERSION,
+      'User-Agent': GITHUB_USER_AGENT,
       ...(body ? { 'Content-Type': 'application/json' } : {}),
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
@@ -285,6 +287,7 @@ async function getContent(token, config, path, raw = false) {
         Accept: raw ? 'application/vnd.github.raw+json' : 'application/vnd.github+json',
         Authorization: `Bearer ${token}`,
         'X-GitHub-Api-Version': GITHUB_API_VERSION,
+        'User-Agent': GITHUB_USER_AGENT,
       },
     },
   );
