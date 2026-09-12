@@ -690,7 +690,11 @@ export default {
         ? 'The public submission service could not complete this request.'
         : (error instanceof Error ? error.message : String(error));
 
-      console.error('public submission error', error);
+      console.error(
+        'public submission error',
+        error instanceof Error ? error.message : String(error),
+        error,
+      );
       return jsonResponse({ error: message }, safeStatus, origin);
     }
   },
