@@ -188,6 +188,9 @@ export type PublishedTuneMetadata = {
   notes?: string;
   versionLabel?: string;
   parentTuneId?: string;
+  lifecycleStatus?: 'Archived';
+  archivedAt?: string;
+  archiveReason?: string;
   files: PublishedTuneFiles;
 };
 

@@ -39,6 +39,14 @@ function isTuneRecord(value: unknown): value is PublishedTuneMetadata {
     && isString(record.firmwareSignature)
     && isString(record.validationStatus)
     && isString(record.classification)
+    && (
+      record.lifecycleStatus === undefined
+      || (
+        record.lifecycleStatus === 'Archived'
+        && isString(record.archivedAt)
+        && (record.archiveReason === undefined || isString(record.archiveReason))
+      )
+    )
     && Array.isArray(record.tags)
     && record.tags.every(isString)
     && Boolean(files && isString(files.msq))
@@ -107,7 +115,9 @@ export function invalidateTuneIndex() {
   indexPromise = null;
 }
 
-export async function loadTuneIndex(): Promise<PublishedTuneIndex> {
+export async function loadTuneIndex(
+  { includeArchived = false }: { includeArchived?: boolean } = {},
+): Promise<PublishedTuneIndex> {
   if (!indexPromise) {
     indexPromise = fetch(publicAssetUrl('tunes/index.json'), {
       cache: 'no-store',
@@ -145,7 +155,13 @@ export async function loadTuneIndex(): Promise<PublishedTuneIndex> {
     });
   }
 
-  return indexPromise;
+  const index = await indexPromise;
+  if (includeArchived) return index;
+
+  return {
+    ...index,
+    tunes: index.tunes.filter((tune) => tune.lifecycleStatus !== 'Archived'),
+  };
 }
 
 async function loadPublishedTuneFromMain(
@@ -190,7 +206,7 @@ export type TuneDescendant = {
 export async function findPublishedChildren(
   parentTuneId: string,
 ): Promise<PublishedTuneMetadata[]> {
-  const index = await loadTuneIndex();
+  const index = await loadTuneIndex({ includeArchived: true });
   return index.tunes
     .filter((tune) => tune.parentTuneId === parentTuneId)
     .sort((left, right) => {
@@ -203,7 +219,7 @@ export async function findPublishedChildren(
 export async function findPublishedDescendants(
   parentTuneId: string,
 ): Promise<TuneDescendant[]> {
-  const index = await loadTuneIndex();
+  const index = await loadTuneIndex({ includeArchived: true });
   const childrenByParent = new Map<string, PublishedTuneMetadata[]>();
 
   for (const tune of index.tunes) {
@@ -269,7 +285,7 @@ export async function findPublishedTune(id: string): Promise<PublishedTuneMetada
     // Fall back to the deployed catalog if GitHub raw content is temporarily unavailable.
   }
 
-  const index = await loadTuneIndex();
+  const index = await loadTuneIndex({ includeArchived: true });
   return index.tunes.find((tune) => tune.id === id) ?? null;
 }
 

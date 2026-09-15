@@ -486,6 +486,9 @@ export default function PublishedTunePage({
               {metadata.validationStatus}
             </span>
             <span className="badge tune-identity-badge">{tuneIdentity(metadata)}</span>
+            {metadata.lifecycleStatus === 'Archived' && (
+              <span className="badge archived-badge">Archived</span>
+            )}
           </div>
         </div>
         <div className="published-owner">
@@ -499,6 +502,9 @@ export default function PublishedTunePage({
           </button>
           <span>Published {formatTuneDate(metadata.publishedAt)}</span>
           {wasUpdated && <span>Updated {formatTuneDate(metadata.updatedAt)}</span>}
+          {metadata.lifecycleStatus === 'Archived' && metadata.archivedAt && (
+            <span>Archived {formatTuneDate(metadata.archivedAt)}</span>
+          )}
           <div className="published-owner-actions">
             <button
               type="button"

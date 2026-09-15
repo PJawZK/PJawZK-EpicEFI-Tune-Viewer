@@ -36,6 +36,7 @@ const TEXT_LIMITS = {
   ignition: 120,
   notes: 6000,
   versionLabel: 120,
+  archiveReason: 500,
   vehicleMake: 80,
   vehicleModel: 120,
   vehicleTrim: 120,
@@ -237,7 +238,8 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
     'ecuTarget', 'firmwareSignature', 'validationStatus', 'classification',
     'vehicle', 'engine', 'fuel', 'ignition', 'injectorCc', 'powerHp',
     'stockPowerHp', 'torqueNm', 'boostBar', 'tags', 'notes',
-    'versionLabel', 'parentTuneId', 'files',
+    'versionLabel', 'parentTuneId', 'lifecycleStatus', 'archivedAt',
+    'archiveReason', 'files',
   ]) {
     // Allowed top-level keys are enumerated below.
   }
@@ -247,7 +249,8 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
     'ecuTarget', 'firmwareSignature', 'validationStatus', 'classification',
     'vehicle', 'engine', 'fuel', 'ignition', 'injectorCc', 'powerHp',
     'stockPowerHp', 'torqueNm', 'boostBar', 'tags', 'notes',
-    'versionLabel', 'parentTuneId', 'files',
+    'versionLabel', 'parentTuneId', 'lifecycleStatus', 'archivedAt',
+    'archiveReason', 'files',
   ]);
   for (const key of Object.keys(tune)) {
     if (!allowedTopLevel.has(key)) {
@@ -277,6 +280,25 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   expectString(tune, 'notes', context, true, TEXT_LIMITS.notes);
   expectString(tune, 'versionLabel', context, true, TEXT_LIMITS.versionLabel);
   expectString(tune, 'parentTuneId', context, true);
+  expectString(tune, 'lifecycleStatus', context, true);
+  expectString(tune, 'archivedAt', context, true);
+  expectString(tune, 'archiveReason', context, true, TEXT_LIMITS.archiveReason);
+
+  if (
+    tune.lifecycleStatus !== undefined
+    && tune.lifecycleStatus !== 'Archived'
+  ) {
+    fail(`${context}: lifecycleStatus must be exactly "Archived" when supplied.`);
+  }
+  if (tune.lifecycleStatus === 'Archived' && !tune.archivedAt) {
+    fail(`${context}: archived tunes must contain archivedAt.`);
+  }
+  if (
+    tune.lifecycleStatus !== 'Archived'
+    && (tune.archivedAt !== undefined || tune.archiveReason !== undefined)
+  ) {
+    fail(`${context}: archivedAt/archiveReason require lifecycleStatus "Archived".`);
+  }
 
   if (tune.id !== entry.name) {
     fail(`${context}: "id" must exactly match its folder name "${entry.name}".`);

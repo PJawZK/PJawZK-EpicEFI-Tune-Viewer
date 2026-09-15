@@ -3763,3 +3763,15 @@ footer {
   color: #ffe4dd;
   background: #3a211d;
 }
+
+.archived-badge {
+  border-color: #665b43;
+  color: #e0cf9b;
+  background: #282317;
+}
+
+.danger-divider {
+  height: 1px;
+  margin: 18px 0;
+  background: #4d302c;
+}
