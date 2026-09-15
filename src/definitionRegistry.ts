@@ -22,6 +22,10 @@ export type DefinitionRegistryEntry = {
   curveCount?: number;
   source: string;
   release?: string;
+  previousFirmwareRelease?: string;
+  sourceRevision?: string;
+  sourceHistoryUrl?: string;
+  firmwareChanges?: string[];
 };
 
 export type DefinitionRegistry = {
