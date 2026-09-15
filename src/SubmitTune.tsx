@@ -5,6 +5,7 @@ import {
   loadDefinitionRegistry,
   type DefinitionRegistryEntry,
 } from './definitionRegistry';
+import { parseFirmwareIdentity } from './firmwareIdentity';
 import { parseIni } from './ini';
 import {
   tuneClassifications,
@@ -966,7 +967,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       setMsqFile(file);
       setTune(parsed);
 
-      const inferredTarget = inferEcuTarget(parsed.details.signature);
+      const firmwareIdentity = parseFirmwareIdentity(parsed.details.signature);
+      const inferredTarget = firmwareIdentity?.ecuTarget || inferEcuTarget(parsed.details.signature);
       const candidates: Array<[keyof FormState, string, string]> = [
         ['summary', parsed.details.tuneComment.trim(), 'Summary'],
         ['ecuTarget', inferredTarget, 'ECU target'],
@@ -1432,6 +1434,30 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               <span>MSQ signature</span>
               <strong>{tune.details.signature}</strong>
             </div>
+            {parseFirmwareIdentity(tune.details.signature) && (
+              <>
+                <div className="detail">
+                  <span>Firmware</span>
+                  <strong>
+                    {parseFirmwareIdentity(tune.details.signature)!.family}
+                    {' · '}
+                    {parseFirmwareIdentity(tune.details.signature)!.date}
+                  </strong>
+                </div>
+                <div className="detail">
+                  <span>Branch / ECU target</span>
+                  <strong>
+                    {parseFirmwareIdentity(tune.details.signature)!.branch}
+                    {' · '}
+                    {parseFirmwareIdentity(tune.details.signature)!.ecuTarget}
+                  </strong>
+                </div>
+                <div className="detail">
+                  <span>Definition hash</span>
+                  <strong>{parseFirmwareIdentity(tune.details.signature)!.definitionHash}</strong>
+                </div>
+              </>
+            )}
             <div className="detail">
               <span>Registry</span>
               <strong>
@@ -1442,6 +1468,12 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
                     : 'No exact public definition'}
               </strong>
             </div>
+            {registryEntry?.release && (
+              <div className="detail">
+                <span>Registry snapshot</span>
+                <strong>{registryEntry.release}</strong>
+              </div>
+            )}
             <div className="detail">
               <span>Local INI</span>
               <strong>
