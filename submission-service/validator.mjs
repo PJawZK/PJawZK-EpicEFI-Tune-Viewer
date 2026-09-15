@@ -165,13 +165,13 @@ export function normalizePublicMetadata(raw, { hasIni, publishedAt }) {
   if (!Array.isArray(source.tags) || !source.tags.every((tag) => typeof tag === 'string')) {
     fail('metadata.json tags must be an array of strings.');
   }
-  if (source.tags.length > 20) fail('metadata.json tags supports at most 20 tags.');
 
   const tags = [...new Set(
     source.tags
       .map((tag) => tag.trim())
       .filter(Boolean),
   )];
+  if (tags.length > 20) fail('metadata.json tags supports at most 20 unique non-empty tags.');
   for (const tag of tags) {
     if (tag.length > 48) fail('metadata.json tags may contain at most 48 characters each.');
   }
