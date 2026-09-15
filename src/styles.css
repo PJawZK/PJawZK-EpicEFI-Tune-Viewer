@@ -4052,3 +4052,36 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.tune-card-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.tune-card-actions .tune-card-open {
+  margin-top: 0;
+}
+
+.tune-card-compare {
+  padding: 10px 12px;
+  border: 1px solid #394950;
+  border-radius: 6px;
+  color: #b8c9d0;
+  background: #151d20;
+  cursor: pointer;
+}
+
+.tune-card-compare:hover,
+.tune-card-compare:focus-visible {
+  border-color: #52666f;
+  color: #e4eef1;
+  background: #1d282c;
+}
+
+@media (max-width: 520px) {
+  .tune-card-actions {
+    grid-template-columns: 1fr;
+  }
+}
