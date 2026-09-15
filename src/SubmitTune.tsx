@@ -18,8 +18,9 @@ import {
 import { parseMsq } from './msq';
 import {
   findPublishedTune,
-  loadPublishedText,
   forgetPublishedTune,
+  invalidateTuneIndex,
+  loadPublishedText,
   loadTuneIndex,
   rememberPublishedTune,
 } from './tuneLibrary';
