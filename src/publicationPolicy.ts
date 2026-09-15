@@ -1,4 +1,5 @@
 export const TUNE_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
+export const MAX_TUNE_ID_LENGTH = 96;
 
 export const RESERVED_TUNE_IDS = new Set([
   'index.json',
@@ -32,6 +33,9 @@ export function assertValidTuneId(
   }
   if (tuneId !== tuneId.trim()) {
     fail(`${context} must not contain leading or trailing whitespace.`);
+  }
+  if (tuneId.length > MAX_TUNE_ID_LENGTH) {
+    fail(`${context} exceeds the ${MAX_TUNE_ID_LENGTH}-character limit.`);
   }
   if (!TUNE_ID_PATTERN.test(tuneId)) {
     fail(

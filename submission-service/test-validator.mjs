@@ -28,6 +28,7 @@ const baseMetadata = {
 assert.equal(assertPublicTuneId('volvo-940-r2'), 'volvo-940-r2');
 assert.throws(() => assertPublicTuneId('../escape'), /may contain lowercase/);
 assert.throws(() => assertPublicTuneId('index.json'), /reserved/);
+assert.throws(() => assertPublicTuneId('a'.repeat(97)), /96-character public submission limit/);
 
 try {
   assertPublicTuneId('../escape');
@@ -51,6 +52,38 @@ assert.deepEqual(normalized.files, {
   msq: 'tune.msq',
   ini: 'mainController.ini',
 });
+
+assert.throws(
+  () => normalizePublicMetadata(
+    { ...baseMetadata, summary: 's'.repeat(1001) },
+    { hasIni: true, publishedAt: '2026-09-12' },
+  ),
+  /summary exceeds the 1000-character public submission limit/,
+);
+
+assert.throws(
+  () => normalizePublicMetadata(
+    { ...baseMetadata, notes: 'n'.repeat(6001) },
+    { hasIni: true, publishedAt: '2026-09-12' },
+  ),
+  /notes exceeds the 6000-character public submission limit/,
+);
+
+assert.throws(
+  () => normalizePublicMetadata(
+    { ...baseMetadata, tags: Array.from({ length: 21 }, (_, index) => `tag-${index}`) },
+    { hasIni: true, publishedAt: '2026-09-12' },
+  ),
+  /at most 20 tags/,
+);
+
+assert.throws(
+  () => normalizePublicMetadata(
+    { ...baseMetadata, tags: ['t'.repeat(49)] },
+    { hasIni: true, publishedAt: '2026-09-12' },
+  ),
+  /at most 48 characters each/,
+);
 
 const unknownWithIni = validatePublicPackage({
   metadata: baseMetadata,
