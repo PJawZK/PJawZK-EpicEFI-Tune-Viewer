@@ -43,5 +43,10 @@
         "Added extra help text for rotational-idle and idle-up configuration."
       ]
     }
+  },
+  "unresolved": {
+    "2026-09-11": {
+      "reason": "The definition milestone is available, but the available EpicEFI source checkout ends before this build. No authoritative source commit range or changelog for 2026-09-11 has been established, so Tune Viewer must not infer source-code changes from the INI structural diff."
+    }
   }
 }
