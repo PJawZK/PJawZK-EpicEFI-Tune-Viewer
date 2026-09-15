@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   findRegisteredDefinition,
   loadRegisteredDefinition,
+  type DefinitionRegistryEntry,
 } from './definitionRegistry';
+import { parseFirmwareIdentity } from './firmwareIdentity';
 import { parseIni } from './ini';
 import type {
   ParsedIni,
@@ -205,6 +207,8 @@ export default function PublishedTunePage({
   const [tune, setTune] = useState<ParsedTune | null>(null);
   const [ini, setIni] = useState<ParsedIni | null>(null);
   const [definitionSource, setDefinitionSource] = useState('');
+  const [firmwareRegistryEntry, setFirmwareRegistryEntry] =
+    useState<DefinitionRegistryEntry | null>(null);
   const [ancestors, setAncestors] = useState<PublishedTuneMetadata[]>([]);
   const [descendants, setDescendants] = useState<TuneDescendant[]>([]);
   const [lineageLoading, setLineageLoading] = useState(false);
@@ -223,6 +227,7 @@ export default function PublishedTunePage({
     setIni(null);
     setAssetError('');
     setDefinitionSource('');
+    setFirmwareRegistryEntry(null);
 
     findPublishedTune(id)
       .then((found) => {
@@ -246,6 +251,23 @@ export default function PublishedTunePage({
       active = false;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (!metadata) return;
+
+    let active = true;
+    findRegisteredDefinition(metadata.firmwareSignature)
+      .then((entry) => {
+        if (active) setFirmwareRegistryEntry(entry);
+      })
+      .catch(() => {
+        if (active) setFirmwareRegistryEntry(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [metadata]);
 
   useEffect(() => {
     if (tab !== 'tune' || !metadata) return;
@@ -710,7 +732,30 @@ export default function PublishedTunePage({
                 onClick={() => navigate(ecuCollectionPath(metadata.ecuTarget))}
               />
               <InfoCell label="Firmware summary" value={firmwareSummary(metadata.firmwareSignature)} />
+              {parseFirmwareIdentity(metadata.firmwareSignature) && (
+                <>
+                  <InfoCell
+                    label="Firmware family"
+                    value={parseFirmwareIdentity(metadata.firmwareSignature)!.family}
+                  />
+                  <InfoCell
+                    label="Firmware branch"
+                    value={parseFirmwareIdentity(metadata.firmwareSignature)!.branch}
+                  />
+                  <InfoCell
+                    label="Firmware build date"
+                    value={parseFirmwareIdentity(metadata.firmwareSignature)!.date}
+                  />
+                  <InfoCell
+                    label="Definition hash"
+                    value={parseFirmwareIdentity(metadata.firmwareSignature)!.definitionHash}
+                  />
+                </>
+              )}
               <InfoCell label="Exact firmware signature" value={metadata.firmwareSignature} />
+              {firmwareRegistryEntry?.release && (
+                <InfoCell label="Registry snapshot" value={firmwareRegistryEntry.release} />
+              )}
               <InfoCell label="Validation" value={metadata.validationStatus} />
               <InfoCell label="Classification" value={metadata.classification} />
               <InfoCell label="Tune identity" value={tuneIdentity(metadata)} />
@@ -720,6 +765,51 @@ export default function PublishedTunePage({
                 value={wasUpdated ? formatTuneDate(metadata.updatedAt) : 'No later edit recorded'}
               />
             </div>
+            {firmwareRegistryEntry && (
+              <div className="firmware-source-history">
+                <div>
+                  <span>Firmware source history</span>
+                  <strong>
+                    {firmwareRegistryEntry.firmwareChanges?.length
+                      ? 'Source-backed release notes available'
+                      : 'No source-backed release notes catalogued'}
+                  </strong>
+                </div>
+                {firmwareRegistryEntry.previousFirmwareRelease && (
+                  <p>
+                    Previous source firmware: <strong>{firmwareRegistryEntry.previousFirmwareRelease}</strong>
+                  </p>
+                )}
+                {firmwareRegistryEntry.sourceRevision && (
+                  <p>
+                    Source revision: <code>{firmwareRegistryEntry.sourceRevision}</code>
+                  </p>
+                )}
+                {firmwareRegistryEntry.firmwareChanges?.length ? (
+                  <ul>
+                    {firmwareRegistryEntry.firmwareChanges.map((change) => (
+                      <li key={change}>{change}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="table-note">
+                    Tune Viewer can identify this firmware exactly from the signature, but the
+                    signature does not contain a Git commit SHA. Source changes are only shown when
+                    release/source evidence is explicitly attached to the firmware definition.
+                  </p>
+                )}
+                {firmwareRegistryEntry.sourceHistoryUrl && (
+                  <a
+                    href={firmwareRegistryEntry.sourceHistoryUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open source history / release notes
+                  </a>
+                )}
+              </div>
+            )}
+
             <div className="mismatch tune-safety-note">
               Reference tune only. Verify firmware, hardware, fuel system, trigger and ignition
               configuration, injectors, sensors and calibration before use on another engine.
