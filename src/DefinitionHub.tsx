@@ -634,6 +634,11 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
                       : 'Source-backed release notes not catalogued'}
                   </strong>
                 </div>
+                {entry.firmwareHistorySource && (
+                  <p>
+                    Evidence: <strong>{entry.firmwareHistorySource}</strong>
+                  </p>
+                )}
                 {entry.previousFirmwareRelease && (
                   <p>
                     Previous source firmware: <strong>{entry.previousFirmwareRelease}</strong>
