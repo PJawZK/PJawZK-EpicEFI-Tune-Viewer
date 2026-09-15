@@ -25,6 +25,7 @@ export type DefinitionRegistryEntry = {
   previousFirmwareRelease?: string;
   sourceRevision?: string;
   sourceHistoryUrl?: string;
+  firmwareHistorySource?: string;
   firmwareChanges?: string[];
 };
 
