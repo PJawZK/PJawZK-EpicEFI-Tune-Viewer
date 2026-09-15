@@ -139,6 +139,23 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
     [definitions],
   );
 
+  const firmwareHistoryCoverage = useMemo(() => {
+    const dates = new Map<string, boolean>();
+    for (const entry of definitions) {
+      const date = firmwareBuildDate(entry);
+      if (!date) continue;
+      dates.set(date, Boolean(dates.get(date) || entry.firmwareChanges?.length));
+    }
+    return {
+      documented: [...dates.values()].filter(Boolean).length,
+      total: dates.size,
+      unresolved: [...dates.entries()]
+        .filter(([, documented]) => !documented)
+        .map(([date]) => date)
+        .sort(),
+    };
+  }, [definitions]);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -300,6 +317,15 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
           <div>
             <span>ECU targets</span>
             <strong>{targets.length}</strong>
+          </div>
+          <div>
+            <span>Source history</span>
+            <strong>{firmwareHistoryCoverage.documented}/{firmwareHistoryCoverage.total}</strong>
+            {firmwareHistoryCoverage.unresolved.length > 0 && (
+              <small title="No source-backed release evidence has been catalogued for these milestones.">
+                Pending: {firmwareHistoryCoverage.unresolved.join(', ')}
+              </small>
+            )}
           </div>
           <div>
             <span>Visible results</span>
