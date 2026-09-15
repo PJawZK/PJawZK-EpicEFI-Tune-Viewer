@@ -240,6 +240,9 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
   const [historyDiffs, setHistoryDiffs] = useState<Record<string, DefinitionDiff>>({});
   const [historyErrors, setHistoryErrors] = useState<Record<string, string>>({});
   const [historyLoading, setHistoryLoading] = useState<Record<string, boolean>>({});
+  const [definitionPreviews, setDefinitionPreviews] = useState<Record<string, ParsedIni>>({});
+  const [previewErrors, setPreviewErrors] = useState<Record<string, string>>({});
+  const [previewLoading, setPreviewLoading] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let active = true;
@@ -364,6 +367,29 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
       }));
     } finally {
       setHistoryLoading((current) => ({ ...current, [entry.signature]: false }));
+    }
+  }
+
+  async function loadDefinitionPreview(entry: DefinitionRegistryEntry) {
+    if (definitionPreviews[entry.signature] || previewLoading[entry.signature]) return;
+
+    setPreviewLoading((current) => ({ ...current, [entry.signature]: true }));
+    setPreviewErrors((current) => ({ ...current, [entry.signature]: '' }));
+    try {
+      const definition = await loadRegisteredDefinition(entry);
+      setDefinitionPreviews((current) => ({
+        ...current,
+        [entry.signature]: definition,
+      }));
+    } catch (caught) {
+      setPreviewErrors((current) => ({
+        ...current,
+        [entry.signature]: caught instanceof Error
+          ? caught.message
+          : 'Unable to inspect this firmware definition.',
+      }));
+    } finally {
+      setPreviewLoading((current) => ({ ...current, [entry.signature]: false }));
     }
   }
 
@@ -577,6 +603,62 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
                   </strong>
                 </div>
               </div>
+
+              <details
+                className="definition-history definition-feature-map"
+                onToggle={(event) => {
+                  if ((event.currentTarget as HTMLDetailsElement).open) {
+                    void loadDefinitionPreview(entry);
+                  }
+                }}
+              >
+                <summary>What does this firmware definition expose?</summary>
+                {previewLoading[entry.signature] && (
+                  <p className="table-note">Loading feature map…</p>
+                )}
+                {previewErrors[entry.signature] && (
+                  <div className="mismatch">{previewErrors[entry.signature]}</div>
+                )}
+                {definitionPreviews[entry.signature] && (() => {
+                  const definition = definitionPreviews[entry.signature];
+                  const menuTitles = definition.menus
+                    .map((menu) => menu.title)
+                    .filter(Boolean);
+                  const dialogTitles = definition.dialogs
+                    .map((dialog) => dialog.title)
+                    .filter(Boolean);
+                  const tableTitles = definition.tables
+                    .map((table) => table.title || table.id)
+                    .filter(Boolean);
+                  const curveTitles = definition.curves
+                    .map((curve) => curve.title || curve.id)
+                    .filter(Boolean);
+
+                  return (
+                    <div className="definition-feature-grid">
+                      {[
+                        ['Menus', menuTitles],
+                        ['Dialogs / settings pages', dialogTitles],
+                        ['Tables', tableTitles],
+                        ['Curves', curveTitles],
+                      ].map(([title, items]) => (
+                        <div key={title as string}>
+                          <span>{title as string}</span>
+                          <strong>{(items as string[]).length}</strong>
+                          <ul>
+                            {(items as string[]).slice(0, 16).map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ul>
+                          {(items as string[]).length > 16 && (
+                            <small>{(items as string[]).length - 16} more</small>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </details>
 
               {previousBySignature.has(entry.signature) && (
                 <details
