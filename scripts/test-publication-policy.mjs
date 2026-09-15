@@ -13,6 +13,7 @@ assert.equal(assertValidTuneId('volvo-940-r2'), 'volvo-940-r2');
 assert.throws(() => assertValidTuneId('../escape'), /may contain lowercase/);
 assert.throws(() => assertValidTuneId('index.json'), /reserved/);
 assert.throws(() => assertValidTuneId('UpperCase'), /may contain lowercase/);
+assert.throws(() => assertValidTuneId('a'.repeat(97)), /96-character limit/);
 
 assert.equal(
   tuneFilePath('volvo-940-r2', 'tune.msq'),
