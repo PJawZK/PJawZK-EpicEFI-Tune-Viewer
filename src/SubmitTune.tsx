@@ -1007,6 +1007,14 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       });
       setAutoFilledFields(filled);
 
+      if (tuneComment.length > MAX_NOTES_LENGTH) {
+        setFileError(
+          'MSQ tune comment exceeds the Notes limit ('
+          + tuneComment.length + '/' + MAX_NOTES_LENGTH
+          + ' characters). No automatic copy was made.',
+        );
+      }
+
       setRegistryStatus('checking');
       try {
         const entry = await findRegisteredDefinition(parsed.details.signature);
