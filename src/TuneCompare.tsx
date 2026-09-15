@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import {
   findRegisteredDefinition,
   loadRegisteredDefinition,
 } from './definitionRegistry';
 import { parseIni } from './ini';
-import type { ParsedIni, ParsedTune } from './model';
+import type { ParsedIni, ParsedTune, PublishedTuneMetadata } from './model';
 import { parseMsq } from './msq';
 import {
   compareTunes,
@@ -14,6 +14,7 @@ import {
   type TableComparison,
 } from './compare';
 import SelectMenu from './SelectMenu';
+import { loadPublishedText, loadTuneIndex } from './tuneLibrary';
 
 type TuneCompareProps = {
   navigate: (path: string) => void;
@@ -118,11 +119,15 @@ function downloadJson(value: unknown, fileName: string) {
 function SideLoader({
   title,
   side,
+  publishedTunes,
+  onPublishedTune,
   onMsq,
   onIni,
 }: {
   title: string;
   side: SideState;
+  publishedTunes: PublishedTuneMetadata[];
+  onPublishedTune: (tuneId: string) => void;
   onMsq: (file: File | undefined) => void;
   onIni: (file: File | undefined) => void;
 }) {
@@ -139,6 +144,24 @@ function SideLoader({
           {definitionReady ? 'Definition ready' : 'Tune required'}
         </span>
       </div>
+
+      <div className="compare-source-choice">
+        <span>Published Tune Hub tune</span>
+        <SelectMenu
+          value=""
+          onChange={onPublishedTune}
+          ariaLabel={`${title} published tune`}
+          options={[
+            { value: '', label: 'Choose published tune…' },
+            ...publishedTunes.map((tune) => ({
+              value: tune.id,
+              label: `${tune.title} · ${tune.ecuTarget} · ${tune.id}`,
+            })),
+          ]}
+        />
+      </div>
+
+      <div className="compare-source-separator"><span>or upload local MSQ</span></div>
 
       <label className="submit-file-card">
         <span>MSQ · required</span>
@@ -358,6 +381,8 @@ function CurveOverlay({ curve }: { curve: CurveComparison }) {
 export default function TuneCompare({ navigate }: TuneCompareProps) {
   const [sideA, setSideA] = useState<SideState>(emptySide);
   const [sideB, setSideB] = useState<SideState>(emptySide);
+  const [publishedTunes, setPublishedTunes] = useState<PublishedTuneMetadata[]>([]);
+  const [catalogError, setCatalogError] = useState('');
   const [tab, setTab] = useState<CompareTab>('summary');
   const [changedOnly, setChangedOnly] = useState(true);
   const [category, setCategory] = useState('All');
@@ -366,18 +391,38 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
   const [tableView, setTableView] = useState<TableView>('absolute');
   const [selectedCurve, setSelectedCurve] = useState('');
 
-  async function loadMsq(
-    file: File | undefined,
+  useEffect(() => {
+    let active = true;
+    loadTuneIndex()
+      .then((index) => {
+        if (!active) return;
+        setPublishedTunes(index.tunes);
+      })
+      .catch((caught) => {
+        if (!active) return;
+        setCatalogError(
+          caught instanceof Error
+            ? caught.message
+            : 'Unable to load published tune catalog.',
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function loadParsedTune(
+    raw: string,
+    label: string,
     setSide: Dispatch<SetStateAction<SideState>>,
   ) {
-    if (!file) return;
-
     try {
-      const parsed = parseMsq(await file.text());
+      const parsed = parseMsq(raw);
       if (!parsed.details.signature) throw new Error('MSQ has no firmware signature.');
 
       setSide({
-        fileName: file.name,
+        fileName: label,
         tune: parsed,
         ini: null,
         definitionStatus: 'loading',
@@ -423,6 +468,48 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
         error: caught instanceof Error ? caught.message : 'Unable to parse this MSQ.',
       });
     }
+  }
+
+  async function loadPublishedTune(
+    tuneId: string,
+    setSide: Dispatch<SetStateAction<SideState>>,
+  ) {
+    if (!tuneId) return;
+    const metadata = publishedTunes.find((entry) => entry.id === tuneId);
+    if (!metadata) {
+      setSide({
+        ...emptySide,
+        error: `Published tune "${tuneId}" is no longer available in the catalog.`,
+      });
+      return;
+    }
+
+    setSide({
+      ...emptySide,
+      fileName: metadata.title,
+      definitionStatus: 'loading',
+    });
+
+    try {
+      const raw = await loadPublishedText(metadata.files.msq);
+      await loadParsedTune(raw, `${metadata.title} · Tune Hub`, setSide);
+    } catch (caught) {
+      setSide({
+        ...emptySide,
+        fileName: metadata.title,
+        error: caught instanceof Error
+          ? caught.message
+          : 'Unable to load this published tune.',
+      });
+    }
+  }
+
+  async function loadMsq(
+    file: File | undefined,
+    setSide: Dispatch<SetStateAction<SideState>>,
+  ) {
+    if (!file) return;
+    await loadParsedTune(await file.text(), file.name, setSide);
   }
 
   async function loadIni(
@@ -581,9 +668,9 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
           <p className="eyebrow">EpicEFI</p>
           <h1>Tune Compare</h1>
           <p className="lede">
-            Compare two EpicEFI tunes with exact firmware definitions. Same-signature tunes receive
-            full settings, table and curve comparison; different firmware is limited to a clearly
-            marked shared-name scalar intersection.
+            Compare any two EpicEFI tunes directly from Tune Hub, from local files, or one of each.
+            Same-signature tunes receive full settings, table and curve comparison; different firmware
+            is limited to a clearly marked shared-name scalar intersection.
           </p>
         </div>
         <button type="button" className="open-button secondary button-reset" onClick={() => navigate('/local')}>
@@ -591,16 +678,26 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
         </button>
       </header>
 
+      {catalogError && (
+        <div className="mismatch compare-catalog-error">
+          Published Tune Hub catalog could not be loaded: {catalogError}
+        </div>
+      )}
+
       <section className="compare-loaders">
         <SideLoader
           title="Tune A · baseline"
           side={sideA}
+          publishedTunes={publishedTunes}
+          onPublishedTune={(tuneId) => void loadPublishedTune(tuneId, setSideA)}
           onMsq={(file) => void loadMsq(file, setSideA)}
           onIni={(file) => void loadIni(file, setSideA)}
         />
         <SideLoader
           title="Tune B · comparison"
           side={sideB}
+          publishedTunes={publishedTunes}
+          onPublishedTune={(tuneId) => void loadPublishedTune(tuneId, setSideB)}
           onMsq={(file) => void loadMsq(file, setSideB)}
           onIni={(file) => void loadIni(file, setSideB)}
         />
