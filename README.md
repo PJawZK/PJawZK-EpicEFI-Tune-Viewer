@@ -6,7 +6,11 @@ This repository is the GitHub-hosted proving ground for a future EpicEFI tune sh
 
 ## Current prototype
 
-V0.3 focuses on the useful tune-browsing workflow familiar from TunerStudio and HyperTuner:
+The project is in a V1.0 release-candidate hardening stage. The core browsing model remains
+INI-driven and read-only, while Tune Hub now adds publication, discovery, lineage, comparison,
+firmware intelligence and trusted lifecycle administration.
+
+The local viewer provides the useful tune-browsing workflow familiar from TunerStudio and HyperTuner:
 
 - Open an EpicEFI TunerStudio `.msq` locally in the browser.
 - Read tune metadata and the exact firmware signature.
@@ -94,6 +98,8 @@ The builder:
 - omits duplicate INIs when the exact firmware definition is already registered
 - supports public no-GitHub-account creation through a separately deployed submission service
 - preserves direct-main publication for trusted repository writers
+- normalizes MSQ firmware identity into family, branch, build date, ECU target and definition hash
+- routes MSQ tune comments safely: up to 1000 characters to Summary, 1001-6000 to Notes, and never silently truncates oversized comments
 
 ### Public community submission
 
@@ -118,6 +124,20 @@ For trusted-writer submission, the browser uses a GitHub access token held only 
 Trusted repository writers publish the tune folder directly to `main` with no temporary branch, fork or pull request. The browser uses GitHub's Contents API: tune assets are staged with CI-skipping commits and `metadata.json` is written last to trigger the authoritative catalog/build validation.
 
 The ZIP option remains available for manual/offline submission.
+
+## Tune lifecycle administration
+
+Trusted repository writers can manage published tunes without changing the public create-only
+submission boundary:
+
+- edit an existing Tune ID in place
+- archive a tune while preserving direct links and lineage
+- restore an archived tune
+- permanently remove a tune after direct-child lineage checks
+- keep archived tunes out of normal Tune Hub discovery while still resolving them for lineage/history
+
+Archive metadata is validated during catalog generation; `archivedAt` and `archiveReason` cannot
+exist without `lifecycleStatus: "Archived"`.
 
 ## Tune lineage and revisions
 
@@ -247,7 +267,17 @@ HyperTuner Cloud and HyperTuner INI tooling are useful open-source references fo
 
 ## Status
 
-**V0.12 public-submission foundation.** V0.11 completed repository/publication hardening: exact signature enforcement, reserved validation authority, canonical tune-folder validation, stale-edit protection, live lineage/collision checks, generated-index consistency and interrupted-write recovery. V0.12 adds the create-only no-GitHub-account submission service foundation using a GitHub App installation and server-side Turnstile validation, while preserving the trusted-writer direct-main path.
+**V1.0 release-candidate hardening.** The V0.12 feature set is complete enough for a release-quality
+regression pass. Current coverage includes exact-signature tune interpretation, public create/revision
+submission, trusted same-ID editing, archive/restore/permanent removal, lineage, Tune Hub discovery,
+published/local tune comparison, multi-firmware definition browsing, firmware identity parsing and
+source-backed firmware history.
+
+Source-backed firmware changes are deliberately separate from structural INI differences. The stored
+firmware milestones currently have source-history coverage for 2025-12-02, 2026-03-30, 2026-07-31,
+2026-08-10 and 2026-08-26. The 2026-09-11 definition milestone is explicitly tracked as unresolved
+because the available source checkout ends before that build; Tune Viewer does not invent source-code
+changes from the INI diff.
 
 
 ## Multi-firmware definition pipeline
@@ -266,7 +296,17 @@ The GitHub Pages prototype includes:
 - `#/definitions` — browse/search exact registered firmware definitions and inspect settings/table/curve/dialog/menu coverage plus SHA-256 integrity metadata.
 - `#/definitions/submit` — parse an EpicEFI `mainController.ini` locally, detect its exact signature and ECU target, reject duplicate registered signatures, and create a source ZIP for `definitions/sources/<definition-id>/`.
 
-Nothing is uploaded automatically. The V0.6 CI pipeline remains authoritative for turning source INIs into compact public registry packs.
+Nothing is uploaded automatically. CI remains authoritative for turning source INIs into compact
+public registry packs.
+
+Firmware Definition cards now distinguish:
+
+- normalized firmware identity parsed from the exact signature
+- source-backed firmware/release changes when evidence is available
+- structural INI changes versus the previous registered definition for that ECU target
+- explicit source-history gaps rather than inferred release notes
+
+The firmware-history coverage summary is shown at the top of Definition Hub.
 
 
 ## Tune Compare
@@ -277,7 +317,13 @@ The local comparison tool is available at:
 #/compare
 ```
 
-Each side resolves its exact firmware definition independently through the public registry or a matching local `mainController.ini`.
+Each side can load a published Tune Hub tune, a local MSQ, or one of each. Published tunes use their
+stored matching `mainController.ini` when present and otherwise resolve the exact registry definition.
+Local tunes can still supply their matching INI manually.
+
+Published Tune Hub cards and Tune Info pages provide direct Compare actions. Revision tunes also expose
+**Compare with parent**. Compare selections are encoded in bookmarkable/shareable hash URLs such as
+`#/compare?a=<tune-id>&b=<tune-id>`.
 
 When both tunes use the same exact firmware signature, Tune Compare provides:
 
