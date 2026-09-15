@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "note": "Source-backed firmware changes are keyed by the build date embedded in the exact firmware signature. These notes are independent of which definitions happen to be stored in Tune Viewer. Exact Git revision is only shown when separately known because the MSQ/INI signature contains a definition/configuration hash, not a Git SHA.",
+  "releases": {
+    "2025-12-02": {
+      "source": "EpicEFI firmware changelog entries dated 2025-12-02",
+      "changes": [
+        "Honda OBD1 board support expanded to all ignition coil outputs, EGT sensing, knock detection and fuel-pressure monitoring; SD-card logging was disabled for that board because of a hardware pin conflict.",
+        "VVT PWM frequency is now shown without first requiring solenoid output pins to be assigned.",
+        "Fixed a freeze/stall issue when saving settings to flash memory on H7-based ECUs."
+      ]
+    },
+    "2026-03-30": {
+      "source": "EpicEFI firmware changelog entries dated 2026-03-30",
+      "changes": [
+        "Barometer calibration now shows live pressure and voltage readouts alongside the sensor settings.",
+        "Fixed an electronic-throttle jam diagnostic typo that could report the wrong fault code.",
+        "Throttle and pedal position sensor faults now raise a diagnostic trouble code and are reported once instead of every engine cycle."
+      ]
+    },
+    "2026-07-31": {
+      "source": "EpicEFI firmware changelog/source history dated 2026-07-31",
+      "changes": [
+        "Trigger monitoring gained sync-status and error indicators directly on the trigger dashboard.",
+        "External devices now receive the output's mode-correct state, including normal versus inverted output mode.",
+        "Force-idle-below-TPS-threshold now engages directly below the threshold instead of depending on DFCO state."
+      ]
+    },
+    "2026-08-10": {
+      "source": "EpicEFI firmware changelog/source history dated 2026-08-10",
+      "changes": [
+        "Added a factory calibration preset for the AEM 3.5 bar MAP sensor (30-2130-50).",
+        "Improved SD-card tune-saving reliability, error handling, low-space log cleanup and retry pacing.",
+        "Fixed launch-control throttle engagement behavior that could cut power without the launch button.",
+        "Expanded deceleration fuel-cut behavior and options.",
+        "Reduced SD-card wear by pacing long-storage writes, and reduced memory use on several boards."
+      ]
+    },
+    "2026-08-26": {
+      "source": "EpicEFI source history dated 2026-08-26",
+      "changes": [
+        "Added the E220 hardware target and its board configuration.",
+        "Added extra help text for rotational-idle and idle-up configuration."
+      ]
+    }
+  }
+}
