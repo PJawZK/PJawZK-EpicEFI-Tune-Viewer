@@ -20,7 +20,7 @@ type TuneCompareProps = {
   navigate: (path: string) => void;
 };
 
-type DefinitionStatus = 'idle' | 'loading' | 'registry' | 'manual-needed' | 'manual' | 'error';
+type DefinitionStatus = 'idle' | 'loading' | 'registry' | 'published' | 'manual-needed' | 'manual' | 'error';
 
 type SideState = {
   fileName: string;
@@ -186,9 +186,11 @@ function SideLoader({
                 ? 'Resolving exact registry definition…'
                 : side.definitionStatus === 'registry'
                   ? side.definitionLabel || 'Public registry'
-                  : side.definitionStatus === 'manual'
-                    ? side.definitionLabel || 'Local INI'
-                    : side.definitionStatus === 'manual-needed'
+                  : side.definitionStatus === 'published'
+                    ? side.definitionLabel || 'Stored tune INI'
+                    : side.definitionStatus === 'manual'
+                      ? side.definitionLabel || 'Local INI'
+                      : side.definitionStatus === 'manual-needed'
                       ? 'Matching INI required'
                       : side.definitionStatus === 'error'
                         ? 'Definition error'
@@ -491,8 +493,37 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
     });
 
     try {
-      const raw = await loadPublishedText(metadata.files.msq);
-      await loadParsedTune(raw, `${metadata.title} · Tune Hub`, setSide);
+      const [rawMsq, rawIni] = await Promise.all([
+        loadPublishedText(metadata.files.msq),
+        metadata.files.ini ? loadPublishedText(metadata.files.ini) : Promise.resolve(null),
+      ]);
+
+      if (!rawIni) {
+        await loadParsedTune(rawMsq, `${metadata.title} · Tune Hub`, setSide);
+        return;
+      }
+
+      const parsed = parseMsq(rawMsq);
+      if (!parsed.details.signature) {
+        throw new Error('Published MSQ has no firmware signature.');
+      }
+
+      const definition = parseIni(rawIni);
+      if (definition.signature !== parsed.details.signature) {
+        throw new Error(
+          'Stored mainController.ini does not match the published MSQ firmware signature. '
+          + `Tune: ${parsed.details.signature}; INI: ${definition.signature}`,
+        );
+      }
+
+      setSide({
+        fileName: `${metadata.title} · Tune Hub`,
+        tune: parsed,
+        ini: definition,
+        definitionStatus: 'published',
+        definitionLabel: 'Stored mainController.ini',
+        error: '',
+      });
     } catch (caught) {
       setSide({
         ...emptySide,
