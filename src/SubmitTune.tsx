@@ -969,8 +969,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
 
       const firmwareIdentity = parseFirmwareIdentity(parsed.details.signature);
       const inferredTarget = firmwareIdentity?.ecuTarget || inferEcuTarget(parsed.details.signature);
+      const tuneComment = parsed.details.tuneComment.trim();
       const candidates: Array<[keyof FormState, string, string]> = [
-        ['summary', parsed.details.tuneComment.trim(), 'Summary'],
         ['ecuTarget', inferredTarget, 'ECU target'],
         ['displacementLiters', tuneValue(parsed, 'displacement'), 'Displacement'],
         ['cylinders', tuneValue(parsed, 'cylindersCount'), 'Cylinders'],
@@ -985,6 +985,18 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       setForm((current) => {
         const next = { ...current };
 
+        if (tuneComment && tuneComment.length <= MAX_SUMMARY_LENGTH && !next.summary.trim()) {
+          next.summary = tuneComment;
+          filled.push('Summary');
+        } else if (
+          tuneComment.length > MAX_SUMMARY_LENGTH
+          && tuneComment.length <= MAX_NOTES_LENGTH
+          && !next.notes.trim()
+        ) {
+          next.notes = tuneComment;
+          filled.push('Notes');
+        }
+
         for (const [key, value, label] of candidates) {
           if (!value || String(next[key]).trim()) continue;
           next[key] = value as never;
@@ -994,6 +1006,14 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         return next;
       });
       setAutoFilledFields(filled);
+
+      if (tuneComment.length > MAX_NOTES_LENGTH) {
+        setFileError(
+          'MSQ tune comment exceeds the Notes limit ('
+          + tuneComment.length + '/' + MAX_NOTES_LENGTH
+          + ' characters). No automatic copy was made.',
+        );
+      }
 
       setRegistryStatus('checking');
       try {

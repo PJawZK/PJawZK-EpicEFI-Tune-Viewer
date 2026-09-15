@@ -1,3 +1,4 @@
+import './test-tag-normalization.mjs';
 import assert from 'node:assert/strict';
 import {
   assertCanonicalMetadataFiles,
