@@ -1236,6 +1236,24 @@ footer {
   font-size: .72rem;
 }
 
+.submit-field.invalid input,
+.submit-field.invalid textarea,
+.submit-field.invalid .select-menu-button {
+  border-color: #8a5148;
+}
+
+.submit-field.invalid input:focus,
+.submit-field.invalid textarea:focus,
+.submit-field.invalid .select-menu-button:focus-visible {
+  border-color: #b66d60;
+}
+
+.submit-field .submit-field-error {
+  color: #d5a296;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .submit-field.full {
   margin-top: 12px;
 }

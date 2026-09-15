@@ -14,6 +14,7 @@ export default function SelectMenu({
   onChange,
   placeholder = 'Select…',
   ariaLabel,
+  ariaInvalid = false,
   className = '',
 }: {
   id?: string;
@@ -22,6 +23,7 @@ export default function SelectMenu({
   onChange: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
+  ariaInvalid?: boolean;
   className?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -126,6 +128,7 @@ export default function SelectMenu({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
+        aria-invalid={ariaInvalid || undefined}
         onClick={() => {
           setOpen((current) => {
             const next = !current;

@@ -136,16 +136,17 @@ const MAX_TAG_LENGTH = 48;
 const MAX_NOTES_LENGTH = 6000;
 const MAX_VERSION_LABEL_LENGTH = 120;
 
-function addTextLengthError(
-  errors: string[],
+type FormFieldErrors = Partial<Record<keyof FormState, string>>;
+
+function textLengthError(
   label: string,
   value: string,
   maxLength: number,
-): void {
+): string {
   const length = value.trim().length;
-  if (length > maxLength) {
-    errors.push(label + ' is too long (' + length + '/' + maxLength + ' characters).');
-  }
+  return length > maxLength
+    ? label + ' is too long (' + length + '/' + maxLength + ' characters).'
+    : '';
 }
 
 function formatBytes(bytes: number): string {
@@ -395,6 +396,7 @@ function TextField({
   type = 'text',
   step,
   maxLength,
+  error,
   disabled = false,
 }: {
   label: string;
@@ -405,20 +407,23 @@ function TextField({
   type?: 'text' | 'number';
   step?: string;
   maxLength?: number;
+  error?: string;
   disabled?: boolean;
 }) {
   return (
-    <label className="submit-field">
+    <label className={`submit-field ${error ? 'invalid' : ''}`}>
       <span>{label}{required && <em> required</em>}</span>
       <input
         type={type}
         step={step}
         maxLength={maxLength}
         value={value}
+        aria-invalid={Boolean(error) || undefined}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         disabled={disabled}
       />
+      {error && <small className="submit-field-error">{error}</small>}
     </label>
   );
 }
@@ -731,52 +736,78 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
     }) as PublishedTuneMetadata;
   }, [editId, form, originalPublishedAt, shouldIncludeIni, tune]);
 
-  const validationErrors = useMemo(() => {
-    const errors: string[] = [];
-    if (!msqFile || !tune) errors.push('Load a valid EpicEFI MSQ.');
-    if (!definitionReady) errors.push('Provide an exact matching firmware definition.');
-    if (ini && !signatureMatch) {
-      errors.push('The selected local INI does not match the MSQ firmware signature.');
+  const fieldErrors = useMemo<FormFieldErrors>(() => {
+    const errors: FormFieldErrors = {};
+
+    if (!form.title.trim()) {
+      errors.title = 'Title is required.';
+    } else {
+      const error = textLengthError('Title', form.title, MAX_TITLE_LENGTH);
+      if (error) errors.title = error;
     }
-    if (!form.title.trim()) errors.push('Title is required.');
+
     if (!form.id.trim()) {
-      errors.push('Tune ID is required.');
+      errors.id = 'Tune ID is required.';
     } else {
       try {
         assertValidTuneId(form.id.trim());
       } catch (error) {
-        errors.push(error instanceof Error ? error.message : 'Tune ID is invalid.');
+        errors.id = error instanceof Error ? error.message : 'Tune ID is invalid.';
       }
 
-      if (editId && form.id.trim() !== editId) {
-        errors.push('Tune ID cannot be changed while editing a published tune.');
-      } else if (existingIds.has(form.id.trim()) && form.id.trim() !== editId) {
-        errors.push('Tune ID already exists in the public catalog.');
+      if (!errors.id && editId && form.id.trim() !== editId) {
+        errors.id = 'Tune ID cannot be changed while editing a published tune.';
+      } else if (
+        !errors.id
+        && existingIds.has(form.id.trim())
+        && form.id.trim() !== editId
+      ) {
+        errors.id = 'Tune ID already exists in the public catalog.';
       }
     }
 
-    addTextLengthError(errors, 'Title', form.title, MAX_TITLE_LENGTH);
-    addTextLengthError(errors, 'Summary', form.summary, MAX_SUMMARY_LENGTH);
-    addTextLengthError(errors, 'Author', form.author, MAX_AUTHOR_LENGTH);
-    addTextLengthError(errors, 'ECU target', form.ecuTarget, MAX_ECU_TARGET_LENGTH);
-    addTextLengthError(errors, 'Vehicle make', form.vehicleMake, MAX_VEHICLE_MAKE_LENGTH);
-    addTextLengthError(errors, 'Vehicle model', form.vehicleModel, MAX_VEHICLE_MODEL_LENGTH);
-    addTextLengthError(errors, 'Vehicle trim', form.vehicleTrim, MAX_VEHICLE_TRIM_LENGTH);
-    addTextLengthError(errors, 'Engine make', form.engineMake, MAX_ENGINE_MAKE_LENGTH);
-    addTextLengthError(errors, 'Engine code', form.engineCode, MAX_ENGINE_CODE_LENGTH);
-    addTextLengthError(errors, 'Aspiration', form.aspiration, MAX_ASPIRATION_LENGTH);
-    addTextLengthError(errors, 'Fuel', form.fuel, MAX_FUEL_LENGTH);
-    addTextLengthError(errors, 'Ignition', form.ignition, MAX_IGNITION_LENGTH);
-    addTextLengthError(errors, 'Notes', form.notes, MAX_NOTES_LENGTH);
-    addTextLengthError(errors, 'Version label', form.versionLabel, MAX_VERSION_LABEL_LENGTH);
+    if (!form.author.trim()) {
+      errors.author = 'Author is required.';
+    } else {
+      const error = textLengthError('Author', form.author, MAX_AUTHOR_LENGTH);
+      if (error) errors.author = error;
+    }
 
-    if (tune) {
-      addTextLengthError(
-        errors,
-        'Firmware signature',
-        tune.details.signature,
-        MAX_FIRMWARE_SIGNATURE_LENGTH,
-      );
+    if (!form.ecuTarget.trim()) {
+      errors.ecuTarget = 'ECU target is required.';
+    } else {
+      const error = textLengthError('ECU target', form.ecuTarget, MAX_ECU_TARGET_LENGTH);
+      if (error) errors.ecuTarget = error;
+    }
+
+    if (!form.validationStatus) {
+      errors.validationStatus = 'Select a validation badge.';
+    }
+    if (!form.classification) {
+      errors.classification = 'Select a tune classification.';
+    }
+
+    const textFields: Array<[
+      keyof FormState,
+      string,
+      string,
+      number,
+    ]> = [
+      ['summary', 'Summary', form.summary, MAX_SUMMARY_LENGTH],
+      ['vehicleMake', 'Vehicle make', form.vehicleMake, MAX_VEHICLE_MAKE_LENGTH],
+      ['vehicleModel', 'Vehicle model', form.vehicleModel, MAX_VEHICLE_MODEL_LENGTH],
+      ['vehicleTrim', 'Vehicle trim', form.vehicleTrim, MAX_VEHICLE_TRIM_LENGTH],
+      ['engineMake', 'Engine make', form.engineMake, MAX_ENGINE_MAKE_LENGTH],
+      ['engineCode', 'Engine code', form.engineCode, MAX_ENGINE_CODE_LENGTH],
+      ['aspiration', 'Aspiration', form.aspiration, MAX_ASPIRATION_LENGTH],
+      ['fuel', 'Fuel', form.fuel, MAX_FUEL_LENGTH],
+      ['ignition', 'Ignition', form.ignition, MAX_IGNITION_LENGTH],
+      ['notes', 'Notes', form.notes, MAX_NOTES_LENGTH],
+      ['versionLabel', 'Version label', form.versionLabel, MAX_VERSION_LABEL_LENGTH],
+    ];
+    for (const [key, label, value, maxLength] of textFields) {
+      const error = textLengthError(label, value, maxLength);
+      if (error) errors[key] = error;
     }
 
     const tags = [...new Set(
@@ -786,53 +817,86 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         .filter(Boolean),
     )];
     if (tags.length > MAX_TAGS) {
-      errors.push('Too many tags (' + tags.length + '/' + MAX_TAGS + ').');
+      errors.tags = 'Too many tags (' + tags.length + '/' + MAX_TAGS + ').';
+    } else {
+      const longTag = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
+      if (longTag) {
+        errors.tags = (
+          'Tag "' + longTag + '" is too long ('
+          + longTag.length + '/' + MAX_TAG_LENGTH + ' characters).'
+        );
+      }
     }
-    const longTag = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
-    if (longTag) {
-      errors.push(
-        'Tag "' + longTag + '" is too long (' + longTag.length + '/' + MAX_TAG_LENGTH + ' characters).',
-      );
-    }
-
-    if (!form.author.trim()) errors.push('Author is required.');
-    if (!form.ecuTarget.trim()) errors.push('ECU target is required.');
-    if (!form.validationStatus) errors.push('Select a validation badge.');
-    if (!form.classification) errors.push('Select a tune classification.');
 
     const parentId = form.parentTuneId.trim();
     if (parentId) {
       try {
         assertValidTuneId(parentId, 'Parent tune ID');
       } catch (error) {
-        errors.push(error instanceof Error ? error.message : 'Parent tune ID is invalid.');
+        errors.parentTuneId = (
+          error instanceof Error ? error.message : 'Parent tune ID is invalid.'
+        );
       }
 
-      if (parentId === form.id.trim()) {
-        errors.push('A tune cannot be its own lineage parent.');
-      } else if (!catalogError && !existingIds.has(parentId)) {
-        errors.push(`Parent tune "${parentId}" does not exist in the public catalog.`);
-      } else if (lineageWouldCycle(form.id.trim(), parentId, parentById)) {
-        errors.push('This parent selection would create circular tune lineage.');
+      if (!errors.parentTuneId && parentId === form.id.trim()) {
+        errors.parentTuneId = 'A tune cannot be its own lineage parent.';
+      } else if (
+        !errors.parentTuneId
+        && !catalogError
+        && !existingIds.has(parentId)
+      ) {
+        errors.parentTuneId = `Parent tune "${parentId}" does not exist in the public catalog.`;
+      } else if (
+        !errors.parentTuneId
+        && lineageWouldCycle(form.id.trim(), parentId, parentById)
+      ) {
+        errors.parentTuneId = 'This parent selection would create circular tune lineage.';
       }
     }
 
     if (isRevision && form.parentTuneId !== revisionOfId) {
-      errors.push('Revision parent is fixed to the source tune.');
+      errors.parentTuneId = 'Revision parent is fixed to the source tune.';
     }
 
     return errors;
   }, [
     catalogError,
-    definitionReady,
     editId,
     existingIds,
     form,
-    ini,
     isRevision,
-    msqFile,
     parentById,
     revisionOfId,
+  ]);
+
+  const validationErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (!msqFile || !tune) errors.push('Load a valid EpicEFI MSQ.');
+    if (!definitionReady) errors.push('Provide an exact matching firmware definition.');
+    if (ini && !signatureMatch) {
+      errors.push('The selected local INI does not match the MSQ firmware signature.');
+    }
+
+    if (tune) {
+      const signatureError = textLengthError(
+        'Firmware signature',
+        tune.details.signature,
+        MAX_FIRMWARE_SIGNATURE_LENGTH,
+      );
+      if (signatureError) errors.push(signatureError);
+    }
+
+    errors.push(
+      ...Object.values(fieldErrors).filter(
+        (error): error is string => Boolean(error),
+      ),
+    );
+    return errors;
+  }, [
+    definitionReady,
+    fieldErrors,
+    ini,
+    msqFile,
     signatureMatch,
     tune,
   ]);
@@ -1334,6 +1398,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             label="Title"
             required
             maxLength={MAX_TITLE_LENGTH}
+            error={fieldErrors.title}
             value={form.title}
             onChange={(value) => {
               update('title', value);
@@ -1346,6 +1411,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               label="Tune ID"
               required
               maxLength={MAX_TUNE_ID_LENGTH}
+              error={fieldErrors.id}
               value={form.id}
               onChange={(value) => {
                 setIdTouched(true);
@@ -1365,24 +1431,30 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             label="Author / uploader"
             required
             maxLength={MAX_AUTHOR_LENGTH}
+            error={fieldErrors.author}
             value={form.author}
             onChange={(value) => update('author', value)}
           />
-          <div className="submit-field">
+          <div className={`submit-field ${fieldErrors.ecuTarget ? 'invalid' : ''}`}>
             <label>ECU target <em>required</em></label>
             <SelectMenu
+              ariaInvalid={Boolean(fieldErrors.ecuTarget)}
               value={form.ecuTarget}
               onChange={(value) => update('ecuTarget', value)}
               placeholder="Select supported ECU…"
               ariaLabel="ECU target"
               options={ecuTargetOptions}
             />
+            {fieldErrors.ecuTarget && (
+              <small className="submit-field-error">{fieldErrors.ecuTarget}</small>
+            )}
             <small>Supported EpicEFI targets are listed, registered definition targets are merged in automatically, and the exact target detected from the loaded MSQ is added if needed.</small>
           </div>
 
-          <div className="submit-field">
+          <div className={`submit-field ${fieldErrors.validationStatus ? 'invalid' : ''}`}>
             <label htmlFor="submit-validation">Validation badge <em>required</em></label>
             <SelectMenu
+              ariaInvalid={Boolean(fieldErrors.validationStatus)}
               id="submit-validation"
               value={form.validationStatus}
               onChange={(value) => update('validationStatus', value as FormState['validationStatus'])}
@@ -1396,6 +1468,9 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
                 )
                 .map((status) => ({ value: status }))}
             />
+            {fieldErrors.validationStatus && (
+              <small className="submit-field-error">{fieldErrors.validationStatus}</small>
+            )}
             <small>
               {form.validationStatus === 'EpicEFI Verified' && editId
                 ? 'Existing EpicEFI Verified status is preserved unless you deliberately change it.'
@@ -1403,9 +1478,10 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             </small>
           </div>
 
-          <div className="submit-field">
+          <div className={`submit-field ${fieldErrors.classification ? 'invalid' : ''}`}>
             <label htmlFor="submit-classification">Classification <em>required</em></label>
             <SelectMenu
+              ariaInvalid={Boolean(fieldErrors.classification)}
               id="submit-classification"
               value={form.classification}
               onChange={(value) => update('classification', value as FormState['classification'])}
@@ -1413,14 +1489,18 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               ariaLabel="Tune classification"
               options={tuneClassifications.map((classification) => ({ value: classification }))}
             />
+            {fieldErrors.classification && (
+              <small className="submit-field-error">{fieldErrors.classification}</small>
+            )}
           </div>
         </div>
 
-        <label className="submit-field full">
+        <label className={`submit-field full ${fieldErrors.summary ? 'invalid' : ''}`}>
           <span>Summary</span>
           <textarea
             value={form.summary}
             maxLength={MAX_SUMMARY_LENGTH}
+            aria-invalid={Boolean(fieldErrors.summary) || undefined}
             onChange={(event) => update('summary', event.target.value)}
             placeholder="Short description shown in Tune Hub search results."
             rows={3}
@@ -1428,6 +1508,9 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <small>
             {form.summary.length}/{MAX_SUMMARY_LENGTH} characters
           </small>
+          {fieldErrors.summary && (
+            <small className="submit-field-error">{fieldErrors.summary}</small>
+          )}
         </label>
       </section>
 
@@ -1440,8 +1523,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         </div>
 
         <div className="submit-grid four">
-          <TextField label="Vehicle make" maxLength={MAX_VEHICLE_MAKE_LENGTH} value={form.vehicleMake} onChange={(value) => update('vehicleMake', value)} />
-          <TextField label="Vehicle model" maxLength={MAX_VEHICLE_MODEL_LENGTH} value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
+          <TextField label="Vehicle make" maxLength={MAX_VEHICLE_MAKE_LENGTH} error={fieldErrors.vehicleMake} value={form.vehicleMake} onChange={(value) => update('vehicleMake', value)} />
+          <TextField label="Vehicle model" maxLength={MAX_VEHICLE_MODEL_LENGTH} error={fieldErrors.vehicleModel} value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
           <div className="submit-field">
             <label htmlFor="submit-model-year">Model year</label>
             <SelectMenu
@@ -1453,16 +1536,17 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               options={modelYearOptions.map((year) => ({ value: year }))}
             />
           </div>
-          <TextField label="Trim / variant" maxLength={MAX_VEHICLE_TRIM_LENGTH} value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
+          <TextField label="Trim / variant" maxLength={MAX_VEHICLE_TRIM_LENGTH} error={fieldErrors.vehicleTrim} value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
 
-          <TextField label="Engine make" maxLength={MAX_ENGINE_MAKE_LENGTH} value={form.engineMake} onChange={(value) => update('engineMake', value)} />
-          <TextField label="Engine code" maxLength={MAX_ENGINE_CODE_LENGTH} value={form.engineCode} onChange={(value) => update('engineCode', value)} />
+          <TextField label="Engine make" maxLength={MAX_ENGINE_MAKE_LENGTH} error={fieldErrors.engineMake} value={form.engineMake} onChange={(value) => update('engineMake', value)} />
+          <TextField label="Engine code" maxLength={MAX_ENGINE_CODE_LENGTH} error={fieldErrors.engineCode} value={form.engineCode} onChange={(value) => update('engineCode', value)} />
           <TextField label="Displacement (L)" type="number" step="0.01" value={form.displacementLiters} onChange={(value) => update('displacementLiters', value)} />
           <TextField label="Cylinders" type="number" value={form.cylinders} onChange={(value) => update('cylinders', value)} />
 
-          <div className="submit-field">
+          <div className={`submit-field ${fieldErrors.aspiration ? 'invalid' : ''}`}>
             <label htmlFor="submit-aspiration">Aspiration</label>
             <SelectMenu
+              ariaInvalid={Boolean(fieldErrors.aspiration)}
               id="submit-aspiration"
               value={form.aspiration}
               onChange={(value) => update('aspiration', value)}
@@ -1470,14 +1554,18 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               ariaLabel="Aspiration"
               options={aspirationOptions.map((option) => ({ value: option }))}
             />
+            {fieldErrors.aspiration && (
+              <small className="submit-field-error">{fieldErrors.aspiration}</small>
+            )}
             {form.aspiration === 'Forced induction (unspecified)' && (
               <small>EpicEFI reports forced induction but does not distinguish turbo from supercharger here.</small>
             )}
           </div>
           <TextField label="Compression ratio" type="number" step="0.01" value={form.compressionRatio} onChange={(value) => update('compressionRatio', value)} />
-          <div className="submit-field">
+          <div className={`submit-field ${fieldErrors.fuel ? 'invalid' : ''}`}>
             <label htmlFor="submit-fuel">Fuel</label>
             <SelectMenu
+              ariaInvalid={Boolean(fieldErrors.fuel)}
               id="submit-fuel"
               value={form.fuel}
               onChange={(value) => update('fuel', value)}
@@ -1485,14 +1573,18 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               ariaLabel="Fuel"
               options={selectableFuelOptions.map((option) => ({ value: option }))}
             />
+            {fieldErrors.fuel && (
+              <small className="submit-field-error">{fieldErrors.fuel}</small>
+            )}
             {form.fuel.startsWith('Flex fuel (fallback ') && (
               <small>Auto-detected from the tune's flex-fuel state and configured fallback ethanol content.</small>
             )}
           </div>
 
-          <div className="submit-field">
+          <div className={`submit-field ${fieldErrors.ignition ? 'invalid' : ''}`}>
             <label htmlFor="submit-ignition">Ignition</label>
             <SelectMenu
+              ariaInvalid={Boolean(fieldErrors.ignition)}
               id="submit-ignition"
               value={form.ignition}
               onChange={(value) => update('ignition', value)}
@@ -1500,6 +1592,9 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               ariaLabel="Ignition"
               options={selectableIgnitionOptions.map((option) => ({ value: option }))}
             />
+            {fieldErrors.ignition && (
+              <small className="submit-field-error">{fieldErrors.ignition}</small>
+            )}
             <small>
               {ini
                 ? 'Options are taken from this firmware definition.'
@@ -1527,6 +1622,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             <TextField
               label="Version label"
               maxLength={MAX_VERSION_LABEL_LENGTH}
+              error={fieldErrors.versionLabel}
               value={form.versionLabel}
               onChange={(value) => update('versionLabel', value)}
               placeholder="R2 / v2.1 / 2026-09 / ..."
@@ -1537,6 +1633,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             <TextField
               label="Parent tune ID"
               maxLength={MAX_TUNE_ID_LENGTH}
+              error={fieldErrors.parentTuneId}
               value={form.parentTuneId}
               onChange={(value) => update('parentTuneId', slugify(value))}
               placeholder="Optional lineage parent"
@@ -1544,14 +1641,15 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             />
             {isRevision && <small>Locked to the source tune for this revision.</small>}
           </div>
-          <TextField label="Tags" value={form.tags} onChange={(value) => update('tags', value)} placeholder="turbo, road, 13t, flex-fuel" />
+          <TextField label="Tags" error={fieldErrors.tags} value={form.tags} onChange={(value) => update('tags', value)} placeholder="turbo, road, 13t, flex-fuel" />
         </div>
 
-        <label className="submit-field full">
+        <label className={`submit-field full ${fieldErrors.notes ? 'invalid' : ''}`}>
           <span>Notes</span>
           <textarea
             value={form.notes}
             maxLength={MAX_NOTES_LENGTH}
+            aria-invalid={Boolean(fieldErrors.notes) || undefined}
             onChange={(event) => update('notes', event.target.value)}
             placeholder="Hardware, known limitations, test conditions, special configuration, or anything another user should know."
             rows={6}
@@ -1559,6 +1657,9 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <small>
             {form.notes.length}/{MAX_NOTES_LENGTH} characters
           </small>
+          {fieldErrors.notes && (
+            <small className="submit-field-error">{fieldErrors.notes}</small>
+          )}
         </label>
       </section>
 
