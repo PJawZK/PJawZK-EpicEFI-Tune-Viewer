@@ -574,6 +574,120 @@ async function findLiveChildTuneIds(
   return children.filter((id): id is string => Boolean(id)).sort();
 }
 
+export async function setTuneArchiveStateOnGitHub({
+  token,
+  tuneId,
+  expectedMetadataText,
+  archived,
+  reason = '',
+}: {
+  token: string;
+  tuneId: string;
+  expectedMetadataText: string;
+  archived: boolean;
+  reason?: string;
+}): Promise<GitHubSubmissionResult> {
+  assertValidTuneId(tuneId);
+
+  const trimmedToken = token.trim();
+  if (!trimmedToken) throw new Error('Enter a GitHub access token.');
+  if (reason.trim().length > 500) {
+    throw new Error('Archive reason exceeds the 500-character publication limit.');
+  }
+
+  const user = await githubRequest<GitHubUser>(trimmedToken, '/user');
+  const repository = await githubRequest<GitHubRepo>(
+    trimmedToken,
+    `/repos/${BASE_OWNER}/${BASE_REPO}`,
+  );
+
+  if (!repository.permissions?.push) {
+    throw new Error(
+      `GitHub user @${user.login} does not have write permission to `
+      + `${BASE_OWNER}/${BASE_REPO}. Archiving published tunes is available only to `
+      + 'the repository owner or a trusted writer with GitHub write access.',
+    );
+  }
+
+  const existingEntries = await getTuneFolderEntries(trimmedToken, tuneId);
+  if (!existingEntries) {
+    throw new Error(
+      `Published tune folder "${tuneId}" no longer exists on ${BASE_BRANCH}.`,
+    );
+  }
+
+  assertCanonicalLiveFolder(tuneId, existingEntries);
+  const snapshot = await captureTuneSnapshot(trimmedToken, tuneId, existingEntries);
+  const metadataPath = tuneFilePath(tuneId, 'metadata.json');
+  const metadataEntry = existingEntries.find((entry) => entry.path === metadataPath);
+  const metadataBefore = snapshot.get(metadataPath);
+
+  if (!metadataEntry || metadataEntry.type !== 'file' || !metadataBefore) {
+    throw new Error('Published tune metadata.json no longer exists on main.');
+  }
+  if (typeof expectedMetadataText !== 'string' || !expectedMetadataText.trim()) {
+    throw new Error(
+      'Archive collision check is missing the metadata snapshot loaded by this page.',
+    );
+  }
+
+  const currentMetadataText = base64ToUtf8(metadataBefore.contentBase64);
+  assertMetadataSnapshotMatches(currentMetadataText, expectedMetadataText, tuneId);
+
+  let metadata: Record<string, unknown>;
+  try {
+    metadata = JSON.parse(currentMetadataText) as Record<string, unknown>;
+  } catch (error) {
+    throw new Error(
+      `Published tune metadata is invalid JSON: `
+      + `${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  metadata.updatedAt = today;
+
+  if (archived) {
+    metadata.lifecycleStatus = 'Archived';
+    metadata.archivedAt = today;
+    if (reason.trim()) {
+      metadata.archiveReason = reason.trim();
+    } else {
+      delete metadata.archiveReason;
+    }
+  } else {
+    delete metadata.lifecycleStatus;
+    delete metadata.archivedAt;
+    delete metadata.archiveReason;
+  }
+
+  const nextText = JSON.stringify(metadata, null, 2) + '\n';
+  const result = await writeContentFile(
+    trimmedToken,
+    {
+      path: metadataPath,
+      blob: new Blob([nextText], { type: 'application/json' }),
+    },
+    [
+      archived
+        ? `Archive tune: ${String(metadata.title ?? tuneId)}`
+        : `Restore tune: ${String(metadata.title ?? tuneId)}`,
+      '',
+      `Tune ID: ${tuneId}`,
+      `${archived ? 'Archived' : 'Restored'} by: @${user.login}`,
+    ].join('\n'),
+    metadataEntry.sha,
+  );
+
+  return {
+    commitSha: result.commit.sha,
+    commitUrl:
+      result.commit.html_url
+      || `https://github.com/${BASE_OWNER}/${BASE_REPO}/commit/${result.commit.sha}`,
+    targetRepository: repository.full_name,
+    login: user.login,
+  };
+}
 export async function deleteTuneFromGitHub({
   token,
   tuneId,
