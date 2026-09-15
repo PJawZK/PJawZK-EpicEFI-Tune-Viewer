@@ -20,6 +20,7 @@ type FormState = {
   previousFirmwareRelease: string;
   sourceRevision: string;
   sourceHistoryUrl: string;
+  firmwareHistorySource: string;
   firmwareChanges: string;
 };
 
@@ -99,6 +100,7 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
     previousFirmwareRelease: '',
     sourceRevision: '',
     sourceHistoryUrl: '',
+    firmwareHistorySource: '',
     firmwareChanges: '',
   });
   const [idTouched, setIdTouched] = useState(false);
@@ -171,6 +173,9 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
       ...(form.sourceHistoryUrl.trim()
         ? { sourceHistoryUrl: form.sourceHistoryUrl.trim() }
         : {}),
+      ...(form.firmwareHistorySource.trim()
+        ? { firmwareHistorySource: form.firmwareHistorySource.trim() }
+        : {}),
       ...(changes.length ? { firmwareChanges: changes } : {}),
     };
   }, [form, parsed]);
@@ -193,6 +198,9 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
       && !/^https?:\/\//i.test(form.sourceHistoryUrl.trim())
     ) {
       errors.push('Source history URL must start with http:// or https://.');
+    }
+    if (form.firmwareChanges.trim() && !form.firmwareHistorySource.trim()) {
+      errors.push('Describe the source/evidence for firmware change notes.');
     }
 
     return errors;
@@ -485,6 +493,15 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
               value={form.sourceHistoryUrl}
               onChange={(event) => update('sourceHistoryUrl', event.target.value)}
               placeholder="https://..."
+            />
+          </label>
+
+          <label className="submit-field">
+            <span>Firmware change evidence / source</span>
+            <input
+              value={form.firmwareHistorySource}
+              onChange={(event) => update('firmwareHistorySource', event.target.value)}
+              placeholder="EpicEFI changelog / source commit / release announcement"
             />
           </label>
 
