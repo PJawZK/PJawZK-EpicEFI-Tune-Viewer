@@ -90,19 +90,44 @@ async function readMetadata(folder, id) {
     fail(`${id}/metadata.json must contain a JSON object.`);
   }
 
-  const allowed = new Set(['ecuTarget', 'label', 'source', 'expectedSignature', 'release']);
+  const stringProperties = new Set([
+    'ecuTarget',
+    'label',
+    'source',
+    'expectedSignature',
+    'release',
+    'previousFirmwareRelease',
+    'sourceRevision',
+    'sourceHistoryUrl',
+  ]);
+  const allowed = new Set([...stringProperties, 'firmwareChanges']);
   for (const key of Object.keys(parsed)) {
     if (!allowed.has(key)) fail(`${id}/metadata.json contains unsupported property "${key}".`);
   }
 
   const metadata = {};
-  for (const key of allowed) {
+  for (const key of stringProperties) {
     const value = parsed[key];
     if (value === undefined) continue;
     if (typeof value !== 'string' || !value.trim()) {
       fail(`${id}/metadata.json property "${key}" must be a non-empty string.`);
     }
     metadata[key] = value.trim();
+  }
+
+  if (parsed.firmwareChanges !== undefined) {
+    if (
+      !Array.isArray(parsed.firmwareChanges)
+      || parsed.firmwareChanges.length === 0
+      || !parsed.firmwareChanges.every(
+        (value) => typeof value === 'string' && value.trim(),
+      )
+    ) {
+      fail(
+        `${id}/metadata.json property "firmwareChanges" must be a non-empty array of non-empty strings.`,
+      );
+    }
+    metadata.firmwareChanges = parsed.firmwareChanges.map((value) => value.trim());
   }
 
   return metadata;
@@ -378,6 +403,12 @@ for (const source of sourceFolders.sort(
     curveCount: parsed.curves.length,
     source: metadata.source || 'EpicEFI mainController.ini',
     ...(metadata.release ? { release: metadata.release } : {}),
+    ...(metadata.previousFirmwareRelease
+      ? { previousFirmwareRelease: metadata.previousFirmwareRelease }
+      : {}),
+    ...(metadata.sourceRevision ? { sourceRevision: metadata.sourceRevision } : {}),
+    ...(metadata.sourceHistoryUrl ? { sourceHistoryUrl: metadata.sourceHistoryUrl } : {}),
+    ...(metadata.firmwareChanges ? { firmwareChanges: metadata.firmwareChanges } : {}),
   });
 
   console.log(
