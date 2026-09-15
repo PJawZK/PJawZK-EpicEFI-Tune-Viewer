@@ -25,6 +25,7 @@ import {
 } from './tuneLibrary';
 import {
   deleteTuneFromGitHub,
+  setTuneArchiveStateOnGitHub,
   submitTuneToGitHub,
   updateTuneOnGitHub,
   type GitHubSubmissionProgress,
@@ -463,6 +464,11 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
   const [githubProgressDetail, setGitHubProgressDetail] = useState('');
   const [githubError, setGitHubError] = useState('');
   const [githubResult, setGitHubResult] = useState<GitHubSubmissionResult | null>(null);
+  const [lifecycleStatus, setLifecycleStatus] = useState<'Published' | 'Archived'>('Published');
+  const [archivedAt, setArchivedAt] = useState('');
+  const [archiveReason, setArchiveReason] = useState('');
+  const [archiveSubmitting, setArchiveSubmitting] = useState(false);
+  const [archiveError, setArchiveError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -474,7 +480,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
 
   useEffect(() => {
     let active = true;
-    loadTuneIndex()
+    loadTuneIndex({ includeArchived: true })
       .then((index) => {
         if (!active) return;
         setExistingIds(new Set(index.tunes.map((entry) => entry.id)));
@@ -580,7 +586,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       if (!active) return;
 
       if (isRevision) {
-        const index = await loadTuneIndex();
+        const index = await loadTuneIndex({ includeArchived: true });
         if (!active) return;
         const ids = new Set(index.tunes.map((entry) => entry.id));
         const byId = new Map(index.tunes.map((entry) => [entry.id, entry]));
@@ -593,9 +599,17 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         revisionForm.versionLabel = identity.label;
         setForm(revisionForm);
         setOriginalPublishedAt('');
+        setLifecycleStatus('Published');
+        setArchivedAt('');
+        setArchiveReason('');
       } else {
         setForm(formFromMetadata(published));
         setOriginalPublishedAt(published.publishedAt);
+        setLifecycleStatus(
+          published.lifecycleStatus === 'Archived' ? 'Archived' : 'Published',
+        );
+        setArchivedAt(published.archivedAt ?? '');
+        setArchiveReason(published.archiveReason ?? '');
       }
 
       setIdTouched(true);
@@ -734,12 +748,28 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       notes: form.notes.trim() || undefined,
       versionLabel: form.versionLabel.trim() || undefined,
       parentTuneId: form.parentTuneId.trim() || undefined,
+      ...(editId && lifecycleStatus === 'Archived'
+        ? {
+            lifecycleStatus: 'Archived' as const,
+            archivedAt: archivedAt || new Date().toISOString().slice(0, 10),
+            archiveReason: archiveReason.trim() || undefined,
+          }
+        : {}),
       files: {
         msq: 'tune.msq',
         ...(shouldIncludeIni ? { ini: 'mainController.ini' } : {}),
       },
     }) as PublishedTuneMetadata;
-  }, [editId, form, originalPublishedAt, shouldIncludeIni, tune]);
+  }, [
+    archiveReason,
+    archivedAt,
+    editId,
+    form,
+    lifecycleStatus,
+    originalPublishedAt,
+    shouldIncludeIni,
+    tune,
+  ]);
 
   const fieldErrors = useMemo<FormFieldErrors>(() => {
     const errors: FormFieldErrors = {};
@@ -865,6 +895,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
 
     return errors;
   }, [
+    archiveReason,
     catalogError,
     editId,
     existingIds,
@@ -1196,6 +1227,35 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
   }
 
 
+  async function changeArchiveState(archived: boolean) {
+    if (!editId || !githubToken.trim()) return;
+
+    setArchiveSubmitting(true);
+    setArchiveError('');
+    setDeleteError('');
+    setGitHubError('');
+    setGitHubResult(null);
+
+    try {
+      await setTuneArchiveStateOnGitHub({
+        token: githubToken,
+        tuneId: editId,
+        expectedMetadataText: originalMetadataText,
+        archived,
+        reason: archiveReason,
+      });
+      invalidateTuneIndex();
+      navigate(`/t/${encodeURIComponent(editId)}/info`);
+    } catch (caught) {
+      setArchiveError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to change this tune archive state.',
+      );
+    } finally {
+      setArchiveSubmitting(false);
+    }
+  }
   async function removePublishedTune() {
     if (!editId || deleteConfirm !== editId || !githubToken.trim()) return;
 
@@ -1945,19 +2005,58 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             <div className="github-submit-heading">
               <div>
                 <p className="eyebrow">Trusted-writer administration</p>
-                <h3>Remove published tune</h3>
+                <h3>Archive or remove published tune</h3>
               </div>
-              <span className="badge">Permanent repository removal</span>
+              <span className="badge">
+                {lifecycleStatus === 'Archived' ? 'Currently archived' : 'Administrative actions'}
+              </span>
             </div>
 
             <p className="submit-help">
-              This deletes the tune folder from <code>main</code>. Public/anonymous submission
-              cannot perform this action. Removal is blocked if live published revisions still
-              depend on this Tune ID or if the tune is repository-authorized as EpicEFI Verified.
+              Archiving keeps the tune and its direct URL/lineage intact but removes it from normal
+              Tune Hub discovery. Public/anonymous submission cannot archive, restore, edit, or remove
+              existing Tune IDs.
+            </p>
+
+            {lifecycleStatus !== 'Archived' && (
+              <label className="submit-field full">
+                <span>Archive reason · optional</span>
+                <textarea
+                  value={archiveReason}
+                  maxLength={500}
+                  onChange={(event) => setArchiveReason(event.target.value)}
+                  placeholder="Superseded, unsafe, obsolete hardware setup, duplicate, or other reason."
+                  rows={3}
+                />
+                <small>{archiveReason.length}/500 characters</small>
+              </label>
+            )}
+
+            {archiveError && <div className="mismatch">{archiveError}</div>}
+
+            <div className="submission-actions">
+              <button
+                type="button"
+                className="open-button secondary button-reset"
+                disabled={archiveSubmitting || deleteSubmitting || !githubToken.trim()}
+                onClick={() => void changeArchiveState(lifecycleStatus !== 'Archived')}
+              >
+                {archiveSubmitting
+                  ? (lifecycleStatus === 'Archived' ? 'Restoring tune…' : 'Archiving tune…')
+                  : (lifecycleStatus === 'Archived' ? 'Restore tune to Tune Hub' : 'Archive tune')}
+              </button>
+            </div>
+
+            <div className="danger-divider" />
+
+            <p className="submit-help">
+              Permanent removal deletes the tune folder from <code>main</code>. Removal is blocked
+              if live published revisions still depend on this Tune ID or if the tune is
+              repository-authorized as EpicEFI Verified.
             </p>
 
             <label className="submit-field full">
-              <span>Type the Tune ID to confirm removal</span>
+              <span>Type the Tune ID to confirm permanent removal</span>
               <input
                 type="text"
                 value={deleteConfirm}
@@ -1976,6 +2075,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
                 className="open-button danger button-reset"
                 disabled={
                   deleteSubmitting
+                  || archiveSubmitting
                   || githubSubmitting
                   || !githubToken.trim()
                   || deleteConfirm !== editId
