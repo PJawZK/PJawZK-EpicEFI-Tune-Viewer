@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm run definitions && npm run catalog && vite",
     "build": "npm test && npm run definitions && npm run catalog && tsc -b && vite build",
-    "test": "node scripts/test-validation-policy.mjs && node scripts/test-publication-policy.mjs && node scripts/test-tune-structure-policy.mjs && node scripts/test-tune-lifecycle-policy.mjs && node scripts/test-definition-compare.mjs && node submission-service/test-validator.mjs && node --check submission-service/worker.mjs",
+    "test": "node scripts/test-validation-policy.mjs && node scripts/test-publication-policy.mjs && node scripts/test-tune-structure-policy.mjs && node scripts/test-tune-lifecycle-policy.mjs && node scripts/test-firmware-identity.mjs && node scripts/test-firmware-history.mjs && node scripts/test-definition-compare.mjs && node submission-service/test-validator.mjs && node --check submission-service/worker.mjs",
     "preview": "vite preview",
     "catalog": "node scripts/build-tune-index.mjs",
     "definitions": "node scripts/build-definition-registry.mjs"
