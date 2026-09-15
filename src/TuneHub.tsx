@@ -231,13 +231,22 @@ function TuneCard({
         </div>
       )}
 
-      <button
-        type="button"
-        className="tune-card-open"
-        onClick={() => navigate(`/t/${encodeURIComponent(tune.id)}/info`)}
-      >
-        Open tune
-      </button>
+      <div className="tune-card-actions">
+        <button
+          type="button"
+          className="tune-card-open"
+          onClick={() => navigate(`/t/${encodeURIComponent(tune.id)}/info`)}
+        >
+          Open tune
+        </button>
+        <button
+          type="button"
+          className="tune-card-compare button-reset"
+          onClick={() => navigate(`/compare?a=${encodeURIComponent(tune.id)}`)}
+        >
+          Compare
+        </button>
+      </div>
     </article>
   );
 }

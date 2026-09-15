@@ -19,7 +19,7 @@ type Route =
   | { kind: 'collection'; view: CollectionView }
   | { kind: 'definitions' }
   | { kind: 'submitDefinition' }
-  | { kind: 'compare' }
+  | { kind: 'compare'; a?: string; b?: string }
   | {
       kind: 'published';
       id: string;
@@ -30,12 +30,17 @@ const publishedTabs = new Set(['info', 'tune', 'lineage', 'download', 'share']);
 
 function parseRoute(): Route {
   const raw = window.location.hash.replace(/^#/, '') || '/';
-  const clean = raw.split('?')[0];
+  const [clean, query = ''] = raw.split('?', 2);
+  const params = new URLSearchParams(query);
   const parts = clean.split('/').filter(Boolean);
 
   if (parts.length === 0) return { kind: 'hub' };
   if (parts[0] === 'local') return { kind: 'local' };
-  if (parts[0] === 'compare') return { kind: 'compare' };
+  if (parts[0] === 'compare') {
+    const a = params.get('a')?.trim() || undefined;
+    const b = params.get('b')?.trim() || undefined;
+    return { kind: 'compare', ...(a ? { a } : {}), ...(b ? { b } : {}) };
+  }
   if (parts[0] === 'submit') return { kind: 'submit' };
   if (parts[0] === 'definitions' && parts[1] === 'submit') {
     return { kind: 'submitDefinition' };
@@ -245,7 +250,13 @@ export default function App() {
       {route.kind === 'collection' && <CollectionPage view={route.view} navigate={navigate} />}
       {route.kind === 'author' && <AuthorPage author={route.author} navigate={navigate} />}
       {route.kind === 'local' && <LocalTuneViewer />}
-      {route.kind === 'compare' && <TuneCompare navigate={navigate} />}
+      {route.kind === 'compare' && (
+        <TuneCompare
+          navigate={navigate}
+          initialA={route.a}
+          initialB={route.b}
+        />
+      )}
       {route.kind === 'submit' && <SubmitTune navigate={navigate} />}
       {route.kind === 'edit' && <SubmitTune navigate={navigate} editId={route.id} />}
       {route.kind === 'revision' && <SubmitTune navigate={navigate} revisionOfId={route.id} />}
