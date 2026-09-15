@@ -19,10 +19,12 @@ import { parseMsq } from './msq';
 import {
   findPublishedTune,
   loadPublishedText,
+  forgetPublishedTune,
   loadTuneIndex,
   rememberPublishedTune,
 } from './tuneLibrary';
 import {
+  deleteTuneFromGitHub,
   submitTuneToGitHub,
   updateTuneOnGitHub,
   type GitHubSubmissionProgress,
@@ -461,6 +463,9 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
   const [githubProgressDetail, setGitHubProgressDetail] = useState('');
   const [githubError, setGitHubError] = useState('');
   const [githubResult, setGitHubResult] = useState<GitHubSubmissionResult | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [publicSubmitting, setPublicSubmitting] = useState(false);
   const [publicError, setPublicError] = useState('');
   const [publicResult, setPublicResult] = useState<PublicSubmissionResult | null>(null);
@@ -1191,6 +1196,33 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
   }
 
 
+  async function removePublishedTune() {
+    if (!editId || deleteConfirm !== editId || !githubToken.trim()) return;
+
+    setDeleteSubmitting(true);
+    setDeleteError('');
+    setGitHubError('');
+    setGitHubResult(null);
+
+    try {
+      await deleteTuneFromGitHub({
+        token: githubToken,
+        tuneId: editId,
+        expectedMetadataText: originalMetadataText,
+      });
+      forgetPublishedTune(editId);
+      navigate('/');
+    } catch (caught) {
+      setDeleteError(
+        caught instanceof Error
+          ? caught.message
+          : 'Unable to remove this published tune.',
+      );
+    } finally {
+      setDeleteSubmitting(false);
+    }
+  }
+
   async function submitPublicTune() {
     if (
       editId
@@ -1907,6 +1939,54 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             </a>
           </div>
         </div>
+
+        {editId && (
+          <div className="github-submit-panel danger-zone">
+            <div className="github-submit-heading">
+              <div>
+                <p className="eyebrow">Trusted-writer administration</p>
+                <h3>Remove published tune</h3>
+              </div>
+              <span className="badge">Permanent repository removal</span>
+            </div>
+
+            <p className="submit-help">
+              This deletes the tune folder from <code>main</code>. Public/anonymous submission
+              cannot perform this action. Removal is blocked if live published revisions still
+              depend on this Tune ID or if the tune is repository-authorized as EpicEFI Verified.
+            </p>
+
+            <label className="submit-field full">
+              <span>Type the Tune ID to confirm removal</span>
+              <input
+                type="text"
+                value={deleteConfirm}
+                autoComplete="off"
+                onChange={(event) => setDeleteConfirm(event.target.value)}
+                placeholder={editId}
+              />
+              <small>Enter <strong>{editId}</strong> exactly.</small>
+            </label>
+
+            {deleteError && <div className="mismatch">{deleteError}</div>}
+
+            <div className="submission-actions">
+              <button
+                type="button"
+                className="open-button danger button-reset"
+                disabled={
+                  deleteSubmitting
+                  || githubSubmitting
+                  || !githubToken.trim()
+                  || deleteConfirm !== editId
+                }
+                onClick={() => void removePublishedTune()}
+              >
+                {deleteSubmitting ? 'Removing tune…' : 'Remove tune from main'}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="submission-actions">
           <button
