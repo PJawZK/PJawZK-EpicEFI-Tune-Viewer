@@ -937,7 +937,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
 
   function submissionText(metadata: PublishedTuneMetadata): string {
     return [
-      'EpicEFI Tune Viewer GitHub prototype submission',
+      'EpicEFI Tune Viewer submission package',
       '',
       `Tune ID: ${metadata.id}`,
       `Firmware signature: ${metadata.firmwareSignature}`,
@@ -1735,8 +1735,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               <strong>PJawZK-EpicEFI-Tune-Viewer</strong> with <strong>Contents: Read and write</strong>.
               Repository collaborators must use a GitHub token that can write this repository; GitHub may require
               a classic personal access token for collaborator access to a personal-account repository.
-              Public community submission without a GitHub account will use a separate submission service and is
-              not enabled yet. The token is held only in page memory.
+              Public community submission is available above without a GitHub account or access token.
+              This trusted-writer token is held only in page memory.
             </small>
           </label>
 
