@@ -117,6 +117,8 @@ const fallbackIgnitionOptions = [
 
 const MAX_RAW_PACKAGE_BYTES = 64 * 1024 * 1024;
 const MAX_ZIP_BYTES = 128 * 1024 * 1024;
+const MAX_SUMMARY_LENGTH = 1000;
+const MAX_NOTES_LENGTH = 6000;
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -720,6 +722,20 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       } else if (existingIds.has(form.id.trim()) && form.id.trim() !== editId) {
         errors.push('Tune ID already exists in the public catalog.');
       }
+    }
+
+    const summaryLength = form.summary.trim().length;
+    if (summaryLength > MAX_SUMMARY_LENGTH) {
+      errors.push(
+        `Summary is too long (${summaryLength}/${MAX_SUMMARY_LENGTH} characters).`,
+      );
+    }
+
+    const notesLength = form.notes.trim().length;
+    if (notesLength > MAX_NOTES_LENGTH) {
+      errors.push(
+        `Notes are too long (${notesLength}/${MAX_NOTES_LENGTH} characters).`,
+      );
     }
 
     if (!form.author.trim()) errors.push('Author is required.');
@@ -1338,10 +1354,14 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <span>Summary</span>
           <textarea
             value={form.summary}
+            maxLength={MAX_SUMMARY_LENGTH}
             onChange={(event) => update('summary', event.target.value)}
             placeholder="Short description shown in Tune Hub search results."
             rows={3}
           />
+          <small>
+            {form.summary.length}/{MAX_SUMMARY_LENGTH} characters
+          </small>
         </label>
       </section>
 
@@ -1463,10 +1483,14 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <span>Notes</span>
           <textarea
             value={form.notes}
+            maxLength={MAX_NOTES_LENGTH}
             onChange={(event) => update('notes', event.target.value)}
             placeholder="Hardware, known limitations, test conditions, special configuration, or anything another user should know."
             rows={6}
           />
+          <small>
+            {form.notes.length}/{MAX_NOTES_LENGTH} characters
+          </small>
         </label>
       </section>
 
