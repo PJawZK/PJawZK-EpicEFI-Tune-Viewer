@@ -8,6 +8,7 @@ import {
   compareDefinitions,
   definitionDiffCount,
   definitionDisplayLabel,
+  displayFirmwareRelease,
   firmwareBuildDate,
   previousRegisteredDefinitions,
   type DefinitionDiff,
@@ -474,7 +475,7 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
               <div className="definition-history-summary">
                 <div>
                   <span>Firmware build date</span>
-                  <strong>{displayRelease(entry)}</strong>
+                  <strong>{displayFirmwareRelease(entry)}</strong>
                 </div>
                 <div>
                   <span>Branch / target</span>
