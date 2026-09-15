@@ -195,6 +195,21 @@
           "const": "mainController.ini"
         }
       }
+    },
+    "lifecycleStatus": {
+      "description": "Absent means actively published. Archived tunes remain addressable but are excluded from normal discovery.",
+      "enum": [
+        "Archived"
+      ]
+    },
+    "archivedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "archiveReason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
     }
   }
 }
