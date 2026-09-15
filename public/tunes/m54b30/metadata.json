@@ -1,0 +1,29 @@
+{
+  "id": "m54b30",
+  "title": "M54b30",
+  "author": "sansvirus.",
+  "publishedAt": "2026-09-15",
+  "ecuTarget": "KLM_MS43",
+  "firmwareSignature": "rusEFI master.2026.03.29.KLM_MS43.2629890729",
+  "validationStatus": "Unverified",
+  "classification": "Base Tune",
+  "vehicle": {
+    "make": "Unknown",
+    "model": "Unknown"
+  },
+  "engine": {
+    "make": "M54b30",
+    "displacementLiters": 3,
+    "cylinders": 6,
+    "aspiration": "Naturally Aspirated",
+    "compressionRatio": 9.8
+  },
+  "fuel": "E0",
+  "ignition": "Individual Coils",
+  "injectorCc": 350,
+  "tags": [],
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}
