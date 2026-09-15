@@ -1,3 +1,4 @@
+import { firmwareIdentitySummary } from './firmwareIdentity';
 import type {
   PublishedTuneMetadata,
   ValidationStatus,
@@ -20,17 +21,7 @@ export function formatTuneDate(value: string | undefined): string {
 }
 
 export function firmwareSummary(signature: string): string {
-  const trimmed = signature.trim();
-  const match = trimmed.match(
-    /^rusEFI\s+(.+?\.\d{4}\.\d{2}\.\d{2})\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_-]+)$/,
-  );
-
-  if (match) {
-    return `${match[1]} · ${match[2]} · build ${match[3]}`;
-  }
-
-  if (trimmed.length <= 54) return trimmed;
-  return `${trimmed.slice(0, 51)}…`;
+  return firmwareIdentitySummary(signature);
 }
 
 export function validationClass(status: ValidationStatus): string {
