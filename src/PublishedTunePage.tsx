@@ -775,6 +775,11 @@ export default function PublishedTunePage({
                       : 'No source-backed release notes catalogued'}
                   </strong>
                 </div>
+                {firmwareRegistryEntry.firmwareHistorySource && (
+                  <p>
+                    Evidence: <strong>{firmwareRegistryEntry.firmwareHistorySource}</strong>
+                  </p>
+                )}
                 {firmwareRegistryEntry.previousFirmwareRelease && (
                   <p>
                     Previous source firmware: <strong>{firmwareRegistryEntry.previousFirmwareRelease}</strong>
