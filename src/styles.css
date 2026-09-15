@@ -4085,3 +4085,63 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+.firmware-source-history {
+  margin-top: 14px;
+  padding: 13px 14px;
+  border: 1px solid #314148;
+  border-radius: 8px;
+  background: #101719;
+}
+
+.firmware-source-history > div:first-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.firmware-source-history > div:first-child span {
+  color: #71868f;
+  font-size: .67rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.firmware-source-history > div:first-child strong {
+  color: #d7e3e7;
+  font-size: .78rem;
+}
+
+.firmware-source-history p {
+  margin: 9px 0 0;
+  color: #aebdc3;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.firmware-source-history ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.firmware-source-history li {
+  margin-top: 6px;
+  color: #c5d2d7;
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
+.firmware-source-history a {
+  display: inline-block;
+  margin-top: 10px;
+  color: #98c8d8;
+  font-size: .76rem;
+  font-weight: 700;
+}
+
+.definition-source-history {
+  margin-top: 10px;
+}
