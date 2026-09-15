@@ -58,7 +58,7 @@ function stableValue(value: unknown): string {
       .sort(([left], [right]) => left.localeCompare(right));
     return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${stableValue(item)}`).join(',')}}`;
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? String(value);
 }
 
 function diffNamedItems<T>(
