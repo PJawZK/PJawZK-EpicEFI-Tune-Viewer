@@ -5,6 +5,7 @@ import {
   type DefinitionRegistryEntry,
 } from './definitionRegistry';
 import { parseIni } from './ini';
+import { parseFirmwareIdentity } from './firmwareIdentity';
 import type { ParsedIni } from './model';
 
 type SubmitDefinitionProps = {
@@ -16,6 +17,10 @@ type FormState = {
   ecuTarget: string;
   label: string;
   source: string;
+  previousFirmwareRelease: string;
+  sourceRevision: string;
+  sourceHistoryUrl: string;
+  firmwareChanges: string;
 };
 
 function slugify(value: string): string {
@@ -91,6 +96,10 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
     ecuTarget: '',
     label: '',
     source: '',
+    previousFirmwareRelease: '',
+    sourceRevision: '',
+    sourceHistoryUrl: '',
+    firmwareChanges: '',
   });
   const [idTouched, setIdTouched] = useState(false);
   const [labelTouched, setLabelTouched] = useState(false);
@@ -141,11 +150,28 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
   const metadata = useMemo(() => {
     if (!parsed) return null;
 
+    const identity = parseFirmwareIdentity(parsed.signature);
+    const changes = form.firmwareChanges
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
     return {
       ecuTarget: form.ecuTarget.trim(),
       label: form.label.trim(),
       source: form.source.trim() || 'Submitted EpicEFI mainController.ini',
       expectedSignature: parsed.signature,
+      ...(identity?.date ? { release: identity.date } : {}),
+      ...(form.previousFirmwareRelease.trim()
+        ? { previousFirmwareRelease: form.previousFirmwareRelease.trim() }
+        : {}),
+      ...(form.sourceRevision.trim()
+        ? { sourceRevision: form.sourceRevision.trim() }
+        : {}),
+      ...(form.sourceHistoryUrl.trim()
+        ? { sourceHistoryUrl: form.sourceHistoryUrl.trim() }
+        : {}),
+      ...(changes.length ? { firmwareChanges: changes } : {}),
     };
   }, [form, parsed]);
 
@@ -162,6 +188,12 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
     if (!form.label.trim()) errors.push('Definition label is required.');
     if (duplicateSignature) errors.push('This exact firmware signature is already registered.');
     if (duplicateId) errors.push('This definition ID is already used by the registry.');
+    if (
+      form.sourceHistoryUrl.trim()
+      && !/^https?:\/\//i.test(form.sourceHistoryUrl.trim())
+    ) {
+      errors.push('Source history URL must start with http:// or https://.');
+    }
 
     return errors;
   }, [duplicateId, duplicateSignature, form, iniFile, parsed]);
@@ -327,6 +359,22 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
                 <span>Signature</span>
                 <strong>{parsed.signature}</strong>
               </div>
+              {parseFirmwareIdentity(parsed.signature) && (
+                <>
+                  <div className="detail">
+                    <span>Firmware build date</span>
+                    <strong>{parseFirmwareIdentity(parsed.signature)!.date}</strong>
+                  </div>
+                  <div className="detail">
+                    <span>Branch / target</span>
+                    <strong>
+                      {parseFirmwareIdentity(parsed.signature)!.branch}
+                      {' · '}
+                      {parseFirmwareIdentity(parsed.signature)!.ecuTarget}
+                    </strong>
+                  </div>
+                </>
+              )}
               <div className="detail">
                 <span>Settings</span>
                 <strong>{parsed.constants.length.toLocaleString()}</strong>
@@ -409,6 +457,48 @@ export default function SubmitDefinition({ navigate }: SubmitDefinitionProps) {
               onChange={(event) => update('source', event.target.value)}
               placeholder="EpicEFI release / development branch / build source"
             />
+          </label>
+
+          <label className="submit-field">
+            <span>Previous source firmware release</span>
+            <input
+              value={form.previousFirmwareRelease}
+              onChange={(event) => update('previousFirmwareRelease', event.target.value)}
+              placeholder="2026-08-25 or named release"
+            />
+            <small>Source-history predecessor, not the previous definition uploaded to Tune Viewer.</small>
+          </label>
+
+          <label className="submit-field">
+            <span>Exact source revision</span>
+            <input
+              value={form.sourceRevision}
+              onChange={(event) => update('sourceRevision', event.target.value)}
+              placeholder="Git commit SHA / release revision"
+            />
+            <small>Leave empty when the firmware artifact does not expose an exact source revision.</small>
+          </label>
+
+          <label className="submit-field">
+            <span>Source history / release notes URL</span>
+            <input
+              value={form.sourceHistoryUrl}
+              onChange={(event) => update('sourceHistoryUrl', event.target.value)}
+              placeholder="https://..."
+            />
+          </label>
+
+          <label className="submit-field full">
+            <span>Firmware changes · one source-backed change per line</span>
+            <textarea
+              value={form.firmwareChanges}
+              onChange={(event) => update('firmwareChanges', event.target.value)}
+              placeholder={'Added ...\nFixed ...\nChanged ...'}
+              rows={6}
+            />
+            <small>
+              Use actual source/release evidence. INI structural differences are calculated separately.
+            </small>
           </label>
         </div>
 
