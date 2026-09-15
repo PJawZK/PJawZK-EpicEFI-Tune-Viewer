@@ -3775,3 +3775,45 @@ footer {
   margin: 18px 0;
   background: #4d302c;
 }
+
+.compare-source-choice {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.compare-source-choice > span {
+  color: #71868f;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.compare-source-choice .select-menu {
+  width: 100%;
+}
+
+.compare-source-separator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  color: #61747d;
+  font-size: .67rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.compare-source-separator::before,
+.compare-source-separator::after {
+  height: 1px;
+  flex: 1;
+  content: '';
+  background: #2b373d;
+}
+
+.compare-catalog-error {
+  margin-top: 20px;
+}
