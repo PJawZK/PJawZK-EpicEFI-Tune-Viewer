@@ -18,12 +18,15 @@ import { loadPublishedText, loadTuneIndex } from './tuneLibrary';
 
 type TuneCompareProps = {
   navigate: (path: string) => void;
+  initialA?: string;
+  initialB?: string;
 };
 
 type DefinitionStatus = 'idle' | 'loading' | 'registry' | 'published' | 'manual-needed' | 'manual' | 'error';
 
 type SideState = {
   fileName: string;
+  publishedTuneId: string;
   tune: ParsedTune | null;
   ini: ParsedIni | null;
   definitionStatus: DefinitionStatus;
@@ -36,6 +39,7 @@ type TableView = 'a' | 'b' | 'absolute' | 'percent';
 
 const emptySide: SideState = {
   fileName: '',
+  publishedTuneId: '',
   tune: null,
   ini: null,
   definitionStatus: 'idle',
@@ -148,7 +152,7 @@ function SideLoader({
       <div className="compare-source-choice">
         <span>Published Tune Hub tune</span>
         <SelectMenu
-          value=""
+          value={side.publishedTuneId}
           onChange={onPublishedTune}
           ariaLabel={`${title} published tune`}
           options={[
@@ -380,7 +384,11 @@ function CurveOverlay({ curve }: { curve: CurveComparison }) {
   );
 }
 
-export default function TuneCompare({ navigate }: TuneCompareProps) {
+export default function TuneCompare({
+  navigate,
+  initialA,
+  initialB,
+}: TuneCompareProps) {
   const [sideA, setSideA] = useState<SideState>(emptySide);
   const [sideB, setSideB] = useState<SideState>(emptySide);
   const [publishedTunes, setPublishedTunes] = useState<PublishedTuneMetadata[]>([]);
@@ -414,10 +422,51 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
     };
   }, []);
 
+  function compareRoute(a: string, b: string): string {
+    const params = new URLSearchParams();
+    if (a) params.set('a', a);
+    if (b) params.set('b', b);
+    const query = params.toString();
+    return query ? `/compare?${query}` : '/compare';
+  }
+
+  async function selectPublishedTune(
+    side: 'a' | 'b',
+    tuneId: string,
+    setSide: Dispatch<SetStateAction<SideState>>,
+  ) {
+    if (!tuneId) return;
+    await loadPublishedTune(tuneId, setSide);
+    navigate(compareRoute(
+      side === 'a' ? tuneId : sideA.publishedTuneId,
+      side === 'b' ? tuneId : sideB.publishedTuneId,
+    ));
+  }
+
+  async function loadLocalTune(
+    side: 'a' | 'b',
+    file: File | undefined,
+    setSide: Dispatch<SetStateAction<SideState>>,
+  ) {
+    if (!file) return;
+    await loadParsedTune(await file.text(), file.name, setSide);
+    navigate(compareRoute(
+      side === 'a' ? '' : sideA.publishedTuneId,
+      side === 'b' ? '' : sideB.publishedTuneId,
+    ));
+  }
+
+  useEffect(() => {
+    if (publishedTunes.length === 0) return;
+    if (initialA) void loadPublishedTune(initialA, setSideA);
+    if (initialB) void loadPublishedTune(initialB, setSideB);
+  }, [initialA, initialB, publishedTunes]);
+
   async function loadParsedTune(
     raw: string,
     label: string,
     setSide: Dispatch<SetStateAction<SideState>>,
+    publishedTuneId = '',
   ) {
     try {
       const parsed = parseMsq(raw);
@@ -425,6 +474,7 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
 
       setSide({
         fileName: label,
+        publishedTuneId,
         tune: parsed,
         ini: null,
         definitionStatus: 'loading',
@@ -489,6 +539,7 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
     setSide({
       ...emptySide,
       fileName: metadata.title,
+      publishedTuneId: tuneId,
       definitionStatus: 'loading',
     });
 
@@ -499,7 +550,12 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
       ]);
 
       if (!rawIni) {
-        await loadParsedTune(rawMsq, `${metadata.title} · Tune Hub`, setSide);
+        await loadParsedTune(
+          rawMsq,
+          `${metadata.title} · Tune Hub`,
+          setSide,
+          tuneId,
+        );
         return;
       }
 
@@ -518,6 +574,7 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
 
       setSide({
         fileName: `${metadata.title} · Tune Hub`,
+        publishedTuneId: tuneId,
         tune: parsed,
         ini: definition,
         definitionStatus: 'published',
@@ -528,19 +585,12 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
       setSide({
         ...emptySide,
         fileName: metadata.title,
+        publishedTuneId: tuneId,
         error: caught instanceof Error
           ? caught.message
           : 'Unable to load this published tune.',
       });
     }
-  }
-
-  async function loadMsq(
-    file: File | undefined,
-    setSide: Dispatch<SetStateAction<SideState>>,
-  ) {
-    if (!file) return;
-    await loadParsedTune(await file.text(), file.name, setSide);
   }
 
   async function loadIni(
@@ -720,16 +770,16 @@ export default function TuneCompare({ navigate }: TuneCompareProps) {
           title="Tune A · baseline"
           side={sideA}
           publishedTunes={publishedTunes}
-          onPublishedTune={(tuneId) => void loadPublishedTune(tuneId, setSideA)}
-          onMsq={(file) => void loadMsq(file, setSideA)}
+          onPublishedTune={(tuneId) => void selectPublishedTune('a', tuneId, setSideA)}
+          onMsq={(file) => void loadLocalTune('a', file, setSideA)}
           onIni={(file) => void loadIni(file, setSideA)}
         />
         <SideLoader
           title="Tune B · comparison"
           side={sideB}
           publishedTunes={publishedTunes}
-          onPublishedTune={(tuneId) => void loadPublishedTune(tuneId, setSideB)}
-          onMsq={(file) => void loadMsq(file, setSideB)}
+          onPublishedTune={(tuneId) => void selectPublishedTune('b', tuneId, setSideB)}
+          onMsq={(file) => void loadLocalTune('b', file, setSideB)}
           onIni={(file) => void loadIni(file, setSideB)}
         />
       </section>
