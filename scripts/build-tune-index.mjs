@@ -26,15 +26,41 @@ const classifications = new Set([
   'Development',
 ]);
 
+const TEXT_LIMITS = {
+  title: 160,
+  summary: 1000,
+  author: 120,
+  ecuTarget: 120,
+  firmwareSignature: 240,
+  fuel: 120,
+  ignition: 120,
+  notes: 6000,
+  versionLabel: 120,
+  vehicleMake: 80,
+  vehicleModel: 120,
+  vehicleTrim: 120,
+  engineMake: 80,
+  engineCode: 120,
+  engineAspiration: 120,
+  tag: 48,
+};
+
+const MAX_TAGS = 20;
+
 function fail(message) {
   throw new Error(message);
 }
 
-function expectString(record, key, context, optional = false) {
+function expectString(record, key, context, optional = false, maxLength) {
   const value = record[key];
   if (optional && value === undefined) return;
   if (typeof value !== 'string' || value.trim() === '') {
     fail(`${context}: "${key}" must be a non-empty string.`);
+  }
+  if (maxLength !== undefined && value.trim().length > maxLength) {
+    fail(
+      `${context}: "${key}" exceeds the ${maxLength}-character publication limit.`,
+    );
   }
 }
 
@@ -229,19 +255,28 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
     }
   }
 
-  for (const key of [
-    'id', 'title', 'author', 'publishedAt', 'ecuTarget',
-    'firmwareSignature', 'validationStatus', 'classification',
-  ]) {
-    expectString(tune, key, context);
-  }
+  expectString(tune, 'id', context);
+  expectString(tune, 'title', context, false, TEXT_LIMITS.title);
+  expectString(tune, 'author', context, false, TEXT_LIMITS.author);
+  expectString(tune, 'publishedAt', context);
+  expectString(tune, 'ecuTarget', context, false, TEXT_LIMITS.ecuTarget);
+  expectString(
+    tune,
+    'firmwareSignature',
+    context,
+    false,
+    TEXT_LIMITS.firmwareSignature,
+  );
+  expectString(tune, 'validationStatus', context);
+  expectString(tune, 'classification', context);
 
-  for (const key of [
-    'summary', 'updatedAt', 'fuel', 'ignition', 'notes',
-    'versionLabel', 'parentTuneId',
-  ]) {
-    expectString(tune, key, context, true);
-  }
+  expectString(tune, 'summary', context, true, TEXT_LIMITS.summary);
+  expectString(tune, 'updatedAt', context, true);
+  expectString(tune, 'fuel', context, true, TEXT_LIMITS.fuel);
+  expectString(tune, 'ignition', context, true, TEXT_LIMITS.ignition);
+  expectString(tune, 'notes', context, true, TEXT_LIMITS.notes);
+  expectString(tune, 'versionLabel', context, true, TEXT_LIMITS.versionLabel);
+  expectString(tune, 'parentTuneId', context, true);
 
   if (tune.id !== entry.name) {
     fail(`${context}: "id" must exactly match its folder name "${entry.name}".`);
@@ -262,6 +297,16 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   if (!Array.isArray(tune.tags) || !tune.tags.every((tag) => typeof tag === 'string')) {
     fail(`${context}: "tags" must be an array of strings.`);
   }
+  if (tune.tags.length > MAX_TAGS) {
+    fail(`${context}: "tags" supports at most ${MAX_TAGS} tags.`);
+  }
+  for (const tag of tune.tags) {
+    if (tag.trim().length > TEXT_LIMITS.tag) {
+      fail(
+        `${context}: tags may contain at most ${TEXT_LIMITS.tag} characters each.`,
+      );
+    }
+  }
 
   validateNestedObject(
     tune.vehicle,
@@ -275,16 +320,52 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   );
 
   if (tune.vehicle) {
-    expectString(tune.vehicle, 'make', `${context}: vehicle`, true);
-    expectString(tune.vehicle, 'model', `${context}: vehicle`, true);
-    expectString(tune.vehicle, 'trim', `${context}: vehicle`, true);
+    expectString(
+      tune.vehicle,
+      'make',
+      `${context}: vehicle`,
+      true,
+      TEXT_LIMITS.vehicleMake,
+    );
+    expectString(
+      tune.vehicle,
+      'model',
+      `${context}: vehicle`,
+      true,
+      TEXT_LIMITS.vehicleModel,
+    );
+    expectString(
+      tune.vehicle,
+      'trim',
+      `${context}: vehicle`,
+      true,
+      TEXT_LIMITS.vehicleTrim,
+    );
     expectOptionalNumber(tune.vehicle, 'year', `${context}: vehicle`);
   }
 
   if (tune.engine) {
-    expectString(tune.engine, 'make', `${context}: engine`, true);
-    expectString(tune.engine, 'code', `${context}: engine`, true);
-    expectString(tune.engine, 'aspiration', `${context}: engine`, true);
+    expectString(
+      tune.engine,
+      'make',
+      `${context}: engine`,
+      true,
+      TEXT_LIMITS.engineMake,
+    );
+    expectString(
+      tune.engine,
+      'code',
+      `${context}: engine`,
+      true,
+      TEXT_LIMITS.engineCode,
+    );
+    expectString(
+      tune.engine,
+      'aspiration',
+      `${context}: engine`,
+      true,
+      TEXT_LIMITS.engineAspiration,
+    );
     expectOptionalNumber(tune.engine, 'displacementLiters', `${context}: engine`);
     expectOptionalNumber(tune.engine, 'cylinders', `${context}: engine`);
     expectOptionalNumber(tune.engine, 'compressionRatio', `${context}: engine`);

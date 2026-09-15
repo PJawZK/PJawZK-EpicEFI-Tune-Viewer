@@ -19,15 +19,42 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "maxLength": 96
     },
-    "title": { "type": "string", "minLength": 1 },
-    "summary": { "type": "string" },
-    "author": { "type": "string", "minLength": 1 },
-    "publishedAt": { "type": "string", "minLength": 1 },
-    "updatedAt": { "type": "string", "minLength": 1 },
-    "ecuTarget": { "type": "string", "minLength": 1 },
-    "firmwareSignature": { "type": "string", "minLength": 1 },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1000
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "publishedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "updatedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ecuTarget": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "firmwareSignature": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
     "validationStatus": {
       "description": "EpicEFI Verified is reserved and also requires a matching repository authority entry.",
       "enum": [
@@ -42,60 +69,130 @@
       ]
     },
     "classification": {
-      "enum": ["Normal", "Experimental", "Base Tune", "Development"]
+      "enum": [
+        "Normal",
+        "Experimental",
+        "Base Tune",
+        "Development"
+      ]
     },
     "vehicle": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "make": { "type": "string" },
-        "model": { "type": "string" },
-        "year": { "type": "number" },
-        "trim": { "type": "string" }
+        "make": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "year": {
+          "type": "number"
+        },
+        "trim": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        }
       }
     },
     "engine": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "make": { "type": "string" },
-        "code": { "type": "string" },
-        "displacementLiters": { "type": "number" },
-        "cylinders": { "type": "number" },
-        "aspiration": { "type": "string" },
-        "compressionRatio": { "type": "number" }
+        "make": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "displacementLiters": {
+          "type": "number"
+        },
+        "cylinders": {
+          "type": "number"
+        },
+        "aspiration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "compressionRatio": {
+          "type": "number"
+        }
       }
     },
-    "fuel": { "type": "string" },
-    "ignition": { "type": "string" },
-    "injectorCc": { "type": "number" },
-    "powerHp": { "type": "number" },
-    "stockPowerHp": { "type": "number" },
-    "torqueNm": { "type": "number" },
-    "boostBar": { "type": "number" },
+    "fuel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "ignition": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "injectorCc": {
+      "type": "number"
+    },
+    "powerHp": {
+      "type": "number"
+    },
+    "stockPowerHp": {
+      "type": "number"
+    },
+    "torqueNm": {
+      "type": "number"
+    },
+    "boostBar": {
+      "type": "number"
+    },
     "tags": {
       "type": "array",
-      "items": { "type": "string" },
-      "uniqueItems": true
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 48
+      },
+      "uniqueItems": true,
+      "maxItems": 20
     },
-    "notes": { "type": "string" },
-    "versionLabel": { "type": "string" },
+    "notes": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 6000
+    },
+    "versionLabel": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
     "parentTuneId": {
       "type": "string",
-      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "minLength": 1,
+      "maxLength": 96
     },
     "files": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["msq"],
+      "required": [
+        "msq"
+      ],
       "properties": {
         "msq": {
-          "type": "string",
-          "pattern": "^[^/\\\\]+\\.msq$"
+          "const": "tune.msq"
         },
         "ini": {
-          "type": "string",
-          "pattern": "^[^/\\\\]+\\.ini$"
+          "const": "mainController.ini"
         }
       }
     }
