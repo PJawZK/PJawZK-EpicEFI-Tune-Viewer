@@ -4,6 +4,7 @@ import {
   loadRegisteredDefinition,
   type DefinitionRegistryEntry,
 } from './definitionRegistry';
+import { parseFirmwareIdentity } from './firmwareIdentity';
 import type { ParsedIni } from './model';
 import SelectMenu from './SelectMenu';
 
@@ -35,8 +36,12 @@ type DefinitionDiff = {
   changedMenus: DefinitionDiffItem[];
 };
 
+function firmwareBuildDate(entry: DefinitionRegistryEntry): string {
+  return parseFirmwareIdentity(entry.signature)?.date || entry.release?.trim() || '';
+}
+
 function displayRelease(entry: DefinitionRegistryEntry): string {
-  return entry.release?.trim() || 'Release not recorded';
+  return firmwareBuildDate(entry) || 'Firmware date not recognized';
 }
 
 function definitionLabel(entry: DefinitionRegistryEntry): string {
@@ -285,6 +290,9 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
         entry.ecuTarget,
         entry.label,
         entry.source,
+        entry.previousFirmwareRelease ?? '',
+        entry.sourceRevision ?? '',
+        ...(entry.firmwareChanges ?? []),
       ].join(' ').toLowerCase().includes(query);
     });
   }, [definitions, search, target]);
@@ -293,7 +301,7 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
     () => [...definitions].sort((a, b) => {
       const targetOrder = a.ecuTarget.localeCompare(b.ecuTarget);
       if (targetOrder) return targetOrder;
-      const releaseOrder = (a.release ?? '').localeCompare(b.release ?? '');
+      const releaseOrder = firmwareBuildDate(a).localeCompare(firmwareBuildDate(b));
       if (releaseOrder) return releaseOrder;
       return a.label.localeCompare(b.label);
     }),
@@ -305,14 +313,14 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
     const byTarget = new Map<string, DefinitionRegistryEntry[]>();
 
     for (const entry of definitions) {
-      if (!entry.release) continue;
+      if (!firmwareBuildDate(entry)) continue;
       const list = byTarget.get(entry.ecuTarget) ?? [];
       list.push(entry);
       byTarget.set(entry.ecuTarget, list);
     }
 
     for (const list of byTarget.values()) {
-      list.sort((a, b) => (a.release ?? '').localeCompare(b.release ?? ''));
+      list.sort((a, b) => firmwareBuildDate(a).localeCompare(firmwareBuildDate(b)));
       for (let index = 1; index < list.length; index += 1) {
         result.set(list[index].signature, list[index - 1]);
       }
@@ -463,8 +471,9 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
               <h2>Compare two firmware releases</h2>
               <p className="table-note">
                 This compares the actual INI definition structures: settings, tables, curves,
-                dialogs and menus. Release labels are used for chronology; registry insertion order
-                is not used.
+                dialogs and menus. It is intentionally separate from source-backed firmware release
+                notes. Firmware dates are parsed from exact signatures; registry insertion order is
+                not used.
               </p>
             </div>
           </div>
@@ -593,15 +602,65 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
 
               <div className="definition-history-summary">
                 <div>
-                  <span>Firmware release</span>
+                  <span>Firmware build date</span>
                   <strong>{displayRelease(entry)}</strong>
                 </div>
                 <div>
-                  <span>Previous firmware milestone</span>
+                  <span>Branch / target</span>
                   <strong>
-                    {previousBySignature.get(entry.signature)?.release ?? 'No earlier milestone registered'}
+                    {parseFirmwareIdentity(entry.signature)
+                      ? `${parseFirmwareIdentity(entry.signature)!.branch} · ${parseFirmwareIdentity(entry.signature)!.ecuTarget}`
+                      : entry.ecuTarget}
                   </strong>
                 </div>
+                <div>
+                  <span>Registry snapshot</span>
+                  <strong>{entry.release ?? 'Not recorded separately'}</strong>
+                </div>
+                <div>
+                  <span>Definition hash</span>
+                  <strong>
+                    {parseFirmwareIdentity(entry.signature)?.definitionHash ?? 'Not parsed'}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="firmware-source-history definition-source-history">
+                <div>
+                  <span>Firmware source changes</span>
+                  <strong>
+                    {entry.firmwareChanges?.length
+                      ? 'Source-backed release notes'
+                      : 'Source-backed release notes not catalogued'}
+                  </strong>
+                </div>
+                {entry.previousFirmwareRelease && (
+                  <p>
+                    Previous source firmware: <strong>{entry.previousFirmwareRelease}</strong>
+                  </p>
+                )}
+                {entry.sourceRevision && (
+                  <p>
+                    Exact source revision: <code>{entry.sourceRevision}</code>
+                  </p>
+                )}
+                {entry.firmwareChanges?.length ? (
+                  <ul>
+                    {entry.firmwareChanges.map((change) => <li key={change}>{change}</li>)}
+                  </ul>
+                ) : (
+                  <p className="table-note">
+                    The exact firmware identity is known from the signature, but the signature only
+                    contains the definition/configuration hash, not a Git commit SHA. Tune Viewer
+                    therefore does not invent source-code changes when no source/release evidence has
+                    been attached to this definition.
+                  </p>
+                )}
+                {entry.sourceHistoryUrl && (
+                  <a href={entry.sourceHistoryUrl} target="_blank" rel="noreferrer">
+                    Open source history / release notes
+                  </a>
+                )}
               </div>
 
               <details
@@ -669,9 +728,11 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
                     }
                   }}
                 >
-                  <summary>What changed in this firmware milestone?</summary>
+                  <summary>Definition changes vs previous registered definition</summary>
                   <p className="table-note">
-                    Compared by firmware release chronology for this ECU target, not by upload order.
+                    Structural INI comparison only. The baseline is the previous registered definition
+                    for this ECU target by firmware build date; it is not presented as the previous
+                    source firmware release.
                   </p>
                   {historyLoading[entry.signature] && <p className="table-note">Comparing definitions…</p>}
                   {historyErrors[entry.signature] && (
