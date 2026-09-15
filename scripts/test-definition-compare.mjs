@@ -107,7 +107,7 @@ assert.deepEqual(diff.changedSettings, [{ id: 'changed', label: 'Changed setting
 assert.deepEqual(diff.removedSettings, [{ id: 'removed', label: 'Removed setting' }]);
 assert.deepEqual(diff.addedTables, [{ id: 'spark', label: 'Spark table' }]);
 assert.deepEqual(diff.changedTables, [{ id: 've', label: 'VE table' }]);
-assert.equal(definitionDiffCount(diff), 5);
+assert.equal(definitionDiffCount(diff), 6);
 
 // Equivalent object content must not become "changed" merely because property order differs.
 const reordered = {
