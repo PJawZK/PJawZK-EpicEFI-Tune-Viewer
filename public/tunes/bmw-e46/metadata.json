@@ -1,0 +1,29 @@
+{
+  "id": "bmw-e46",
+  "title": "BMW E46",
+  "author": "VictorTH",
+  "publishedAt": "2026-09-15",
+  "ecuTarget": "epicEFI",
+  "firmwareSignature": "rusEFI master.2026.07.19.epicECU.3306848510",
+  "validationStatus": "Road Tested",
+  "classification": "Experimental",
+  "vehicle": {
+    "make": "BMW",
+    "model": "E46",
+    "year": 2000
+  },
+  "engine": {
+    "displacementLiters": 3,
+    "cylinders": 6,
+    "aspiration": "Forced induction (unspecified)",
+    "compressionRatio": 8.5
+  },
+  "fuel": "Other / Custom",
+  "ignition": "Individual Coils",
+  "injectorCc": 290,
+  "tags": [],
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}
