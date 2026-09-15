@@ -16,6 +16,7 @@ const sourcesRoot = path.join(root, 'definitions', 'sources');
 const publicRoot = path.join(root, 'public', 'definitions');
 const generatedRoot = path.join(publicRoot, 'generated');
 const registryPath = path.join(publicRoot, 'registry.json');
+const firmwareHistoryPath = path.join(root, 'definitions', 'firmware-history.json');
 
 function fail(message) {
   throw new Error(message);
@@ -43,6 +44,67 @@ function inferEcuTarget(signature) {
     (part) => /^[A-Z][A-Z0-9_-]{2,}$/i.test(part) && !/^master$/i.test(part),
   );
   return targetish?.toUpperCase() ?? '';
+}
+
+function firmwareBuildDate(signature) {
+  const match = signature.trim().match(
+    /^(.+?)\s+([^.\s]+)\.(\d{4})\.(\d{2})\.(\d{2})\.([^.]+)\.([^.\s]+)$/,
+  );
+  return match ? `${match[3]}-${match[4]}-${match[5]}` : '';
+}
+
+async function loadFirmwareHistory() {
+  if (!(await fileExists(firmwareHistoryPath))) return new Map();
+
+  let parsed;
+  try {
+    parsed = JSON.parse(await readFile(firmwareHistoryPath, 'utf8'));
+  } catch (error) {
+    fail(
+      `definitions/firmware-history.json is not valid JSON: `
+      + (error instanceof Error ? error.message : String(error)),
+    );
+  }
+
+  if (!parsed || parsed.schema !== 1 || !parsed.releases || typeof parsed.releases !== 'object') {
+    fail('definitions/firmware-history.json must use schema 1 with a releases object.');
+  }
+
+  const history = new Map();
+  for (const [date, release] of Object.entries(parsed.releases)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      fail(`Firmware history key "${date}" must be YYYY-MM-DD.`);
+    }
+    if (!release || typeof release !== 'object' || Array.isArray(release)) {
+      fail(`Firmware history release "${date}" must be an object.`);
+    }
+    if (
+      typeof release.source !== 'string'
+      || !release.source.trim()
+      || !Array.isArray(release.changes)
+      || release.changes.length === 0
+      || !release.changes.every((change) => typeof change === 'string' && change.trim())
+    ) {
+      fail(
+        `Firmware history release "${date}" requires non-empty source and changes fields.`,
+      );
+    }
+    history.set(date, {
+      source: release.source.trim(),
+      changes: release.changes.map((change) => change.trim()),
+      ...(typeof release.previousFirmwareRelease === 'string' && release.previousFirmwareRelease.trim()
+        ? { previousFirmwareRelease: release.previousFirmwareRelease.trim() }
+        : {}),
+      ...(typeof release.sourceRevision === 'string' && release.sourceRevision.trim()
+        ? { sourceRevision: release.sourceRevision.trim() }
+        : {}),
+      ...(typeof release.sourceHistoryUrl === 'string' && release.sourceHistoryUrl.trim()
+        ? { sourceHistoryUrl: release.sourceHistoryUrl.trim() }
+        : {}),
+    });
+  }
+
+  return history;
 }
 
 async function fileExists(filePath) {
@@ -99,6 +161,7 @@ async function readMetadata(folder, id) {
     'previousFirmwareRelease',
     'sourceRevision',
     'sourceHistoryUrl',
+    'firmwareHistorySource',
   ]);
   const allowed = new Set([...stringProperties, 'firmwareChanges']);
   for (const key of Object.keys(parsed)) {
@@ -119,15 +182,23 @@ async function readMetadata(folder, id) {
     if (
       !Array.isArray(parsed.firmwareChanges)
       || parsed.firmwareChanges.length === 0
+      || parsed.firmwareChanges.length > 50
       || !parsed.firmwareChanges.every(
-        (value) => typeof value === 'string' && value.trim(),
+        (value) => typeof value === 'string' && value.trim() && value.trim().length <= 500,
       )
     ) {
       fail(
-        `${id}/metadata.json property "firmwareChanges" must be a non-empty array of non-empty strings.`,
+        `${id}/metadata.json property "firmwareChanges" must contain 1-50 non-empty strings of at most 500 characters.`,
       );
     }
     metadata.firmwareChanges = parsed.firmwareChanges.map((value) => value.trim());
+  }
+
+  if (
+    metadata.sourceHistoryUrl
+    && !/^https?:\/\//i.test(metadata.sourceHistoryUrl)
+  ) {
+    fail(`${id}/metadata.json property "sourceHistoryUrl" must use http:// or https://.`);
   }
 
   return metadata;
@@ -237,6 +308,7 @@ function createPack(parsed, ecuTarget) {
 }
 
 const parseIni = await loadSharedIniParser();
+const firmwareHistory = await loadFirmwareHistory();
 
 function runSelfTest() {
   const fixture = `
@@ -382,6 +454,8 @@ for (const source of sourceFolders.sort(
   if (!targetSlug) fail(`${sourcePath}: ECU target "${ecuTarget}" cannot be converted to a safe path.`);
 
   const pack = createPack(parsed, ecuTarget);
+  const buildDate = firmwareBuildDate(parsed.signature);
+  const history = buildDate ? firmwareHistory.get(buildDate) : undefined;
   const packedJson = Buffer.from(JSON.stringify(pack), 'utf8');
   const compressed = gzipSync(packedJson, { level: 9 });
   const sha256 = createHash('sha256').update(compressed).digest('hex');
@@ -403,12 +477,24 @@ for (const source of sourceFolders.sort(
     curveCount: parsed.curves.length,
     source: metadata.source || 'EpicEFI mainController.ini',
     ...(metadata.release ? { release: metadata.release } : {}),
-    ...(metadata.previousFirmwareRelease
-      ? { previousFirmwareRelease: metadata.previousFirmwareRelease }
+    ...((metadata.previousFirmwareRelease || history?.previousFirmwareRelease)
+      ? {
+          previousFirmwareRelease:
+            metadata.previousFirmwareRelease || history?.previousFirmwareRelease,
+        }
       : {}),
-    ...(metadata.sourceRevision ? { sourceRevision: metadata.sourceRevision } : {}),
-    ...(metadata.sourceHistoryUrl ? { sourceHistoryUrl: metadata.sourceHistoryUrl } : {}),
-    ...(metadata.firmwareChanges ? { firmwareChanges: metadata.firmwareChanges } : {}),
+    ...((metadata.sourceRevision || history?.sourceRevision)
+      ? { sourceRevision: metadata.sourceRevision || history?.sourceRevision }
+      : {}),
+    ...((metadata.sourceHistoryUrl || history?.sourceHistoryUrl)
+      ? { sourceHistoryUrl: metadata.sourceHistoryUrl || history?.sourceHistoryUrl }
+      : {}),
+    ...((metadata.firmwareHistorySource || history?.source)
+      ? { firmwareHistorySource: metadata.firmwareHistorySource || history?.source }
+      : {}),
+    ...((metadata.firmwareChanges || history?.changes)
+      ? { firmwareChanges: metadata.firmwareChanges || history?.changes }
+      : {}),
   });
 
   console.log(
