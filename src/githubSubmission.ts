@@ -231,8 +231,8 @@ async function deleteContentFile(
   path: string,
   sha: string,
   message = 'Cleanup failed tune upload [skip ci]',
-) {
-  await githubRequest(
+): Promise<ContentWriteResult> {
+  return githubRequest<ContentWriteResult>(
     token,
     `/repos/${BASE_OWNER}/${BASE_REPO}/contents/${path
       .split('/')
@@ -549,6 +549,177 @@ function permissionError(error: unknown): Error | null {
   }
 
   return null;
+}
+
+async function findLiveChildTuneIds(
+  token: string,
+  tuneId: string,
+): Promise<string[]> {
+  const entries = await githubRequest<ContentEntry[]>(
+    token,
+    `/repos/${BASE_OWNER}/${BASE_REPO}/contents/public/tunes?ref=${encodeURIComponent(BASE_BRANCH)}`,
+  );
+
+  const directories = entries.filter(
+    (entry) => entry.type === 'dir' && entry.name !== tuneId,
+  );
+
+  const children = await Promise.all(
+    directories.map(async (entry) => {
+      const live = await readLiveTuneMetadata(token, entry.name);
+      return live.metadata.parentTuneId === tuneId ? entry.name : null;
+    }),
+  );
+
+  return children.filter((id): id is string => Boolean(id)).sort();
+}
+
+export async function deleteTuneFromGitHub({
+  token,
+  tuneId,
+  expectedMetadataText,
+}: {
+  token: string;
+  tuneId: string;
+  expectedMetadataText: string;
+}): Promise<GitHubSubmissionResult> {
+  assertValidTuneId(tuneId);
+
+  const trimmedToken = token.trim();
+  if (!trimmedToken) throw new Error('Enter a GitHub access token.');
+
+  const user = await githubRequest<GitHubUser>(trimmedToken, '/user');
+  const repository = await githubRequest<GitHubRepo>(
+    trimmedToken,
+    `/repos/${BASE_OWNER}/${BASE_REPO}`,
+  );
+
+  if (!repository.permissions?.push) {
+    throw new Error(
+      `GitHub user @${user.login} does not have write permission to `
+      + `${BASE_OWNER}/${BASE_REPO}. Removing published tunes is available only to `
+      + 'the repository owner or a trusted writer with GitHub write access.',
+    );
+  }
+
+  const existingEntries = await getTuneFolderEntries(trimmedToken, tuneId);
+  if (!existingEntries) {
+    throw new Error(
+      `Published tune folder "${tuneId}" no longer exists on ${BASE_BRANCH}.`,
+    );
+  }
+
+  assertCanonicalLiveFolder(tuneId, existingEntries);
+  const snapshot = await captureTuneSnapshot(trimmedToken, tuneId, existingEntries);
+  const metadataPath = tuneFilePath(tuneId, 'metadata.json');
+  const metadataEntry = existingEntries.find((entry) => entry.path === metadataPath);
+  const metadataBefore = snapshot.get(metadataPath);
+
+  if (!metadataEntry || metadataEntry.type !== 'file' || !metadataBefore) {
+    throw new Error('Published tune metadata.json no longer exists on main.');
+  }
+  if (typeof expectedMetadataText !== 'string' || !expectedMetadataText.trim()) {
+    throw new Error(
+      'Delete collision check is missing the metadata snapshot loaded by this page.',
+    );
+  }
+
+  const currentMetadataText = base64ToUtf8(metadataBefore.contentBase64);
+  assertMetadataSnapshotMatches(currentMetadataText, expectedMetadataText, tuneId);
+
+  let currentMetadata: Record<string, unknown>;
+  try {
+    currentMetadata = JSON.parse(currentMetadataText) as Record<string, unknown>;
+  } catch (error) {
+    throw new Error(
+      `Published tune metadata is invalid JSON: `
+      + `${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  if (currentMetadata.validationStatus === 'EpicEFI Verified') {
+    throw new Error(
+      'EpicEFI Verified tunes cannot be removed from this screen while their '
+      + 'repository validation-authority entry still exists.',
+    );
+  }
+
+  const children = await findLiveChildTuneIds(trimmedToken, tuneId);
+  if (children.length > 0) {
+    throw new Error(
+      `Tune "${tuneId}" cannot be removed because published revisions still depend on it: `
+      + children.join(', '),
+    );
+  }
+
+  const mutations: AppliedMutation[] = [];
+  const assetEntries = existingEntries.filter((entry) => entry.path !== metadataPath);
+
+  try {
+    for (const entry of assetEntries) {
+      const before = snapshot.get(entry.path);
+      if (!before) {
+        throw new Error(`Unable to snapshot "${entry.path}" before deletion.`);
+      }
+
+      await deleteContentFile(
+        trimmedToken,
+        entry.path,
+        entry.sha,
+        `Remove tune ${tuneId}: ${entry.name} [skip ci]`,
+      );
+      mutations.push({
+        kind: 'delete',
+        path: entry.path,
+        before,
+      });
+    }
+
+    const finalResult = await deleteContentFile(
+      trimmedToken,
+      metadataPath,
+      metadataEntry.sha,
+      [
+        `Remove tune: ${String(currentMetadata.title ?? tuneId)}`,
+        '',
+        `Tune ID: ${tuneId}`,
+        `Removed by: @${user.login}`,
+      ].join('\n'),
+    );
+
+    return {
+      commitSha: finalResult.commit.sha,
+      commitUrl:
+        finalResult.commit.html_url
+        || `https://github.com/${BASE_OWNER}/${BASE_REPO}/commit/${finalResult.commit.sha}`,
+      targetRepository: repository.full_name,
+      login: user.login,
+    };
+  } catch (error) {
+    const original = permissionError(error) ?? (
+      error instanceof Error ? error : new Error(String(error))
+    );
+
+    if (mutations.length === 0) throw original;
+
+    const rollbackFailures = await rollbackEditMutations(
+      trimmedToken,
+      tuneId,
+      mutations,
+    );
+
+    if (rollbackFailures.length > 0) {
+      throw new Error(
+        `${original.message} Automatic rollback could not fully restore the tune: `
+        + rollbackFailures.join('; ')
+        + '. Repair the published tune before trying another removal.',
+      );
+    }
+
+    throw new Error(
+      `${original.message} The published tune files were restored automatically.`,
+    );
+  }
 }
 
 export async function updateTuneOnGitHub({
