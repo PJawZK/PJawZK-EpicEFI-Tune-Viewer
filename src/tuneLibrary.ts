@@ -5,6 +5,7 @@ const RAW_MAIN_ROOT =
 
 let indexPromise: Promise<PublishedTuneIndex> | null = null;
 const tuneOverrides = new Map<string, PublishedTuneMetadata>();
+const hiddenTuneIds = new Set<string>();
 
 export function publicAssetUrl(path: string): string {
   return new URL(path.replace(/^\/+/, ''), document.baseURI).toString();
@@ -63,16 +64,18 @@ function publicTuneRecord(record: PublishedTuneMetadata): PublishedTuneMetadata 
 }
 
 function applyTuneOverrides(index: PublishedTuneIndex): PublishedTuneIndex {
-  if (!tuneOverrides.size) return index;
+  if (!tuneOverrides.size && !hiddenTuneIds.size) return index;
 
   const seen = new Set<string>();
-  const tunes = index.tunes.map((tune) => {
-    seen.add(tune.id);
-    return tuneOverrides.get(tune.id) ?? tune;
-  });
+  const tunes = index.tunes
+    .filter((tune) => !hiddenTuneIds.has(tune.id))
+    .map((tune) => {
+      seen.add(tune.id);
+      return tuneOverrides.get(tune.id) ?? tune;
+    });
 
   for (const [id, tune] of tuneOverrides) {
-    if (!seen.has(id)) tunes.push(tune);
+    if (!seen.has(id) && !hiddenTuneIds.has(id)) tunes.push(tune);
   }
 
   return {
@@ -83,7 +86,17 @@ function applyTuneOverrides(index: PublishedTuneIndex): PublishedTuneIndex {
 
 export function rememberPublishedTune(metadata: PublishedTuneMetadata) {
   const normalized = publicTuneRecord(metadata);
+  hiddenTuneIds.delete(normalized.id);
   tuneOverrides.set(normalized.id, normalized);
+
+  if (indexPromise) {
+    indexPromise = indexPromise.then(applyTuneOverrides);
+  }
+}
+
+export function forgetPublishedTune(tuneId: string) {
+  hiddenTuneIds.add(tuneId);
+  tuneOverrides.delete(tuneId);
 
   if (indexPromise) {
     indexPromise = indexPromise.then(applyTuneOverrides);
@@ -247,6 +260,8 @@ export async function loadTuneAncestors(
 }
 
 export async function findPublishedTune(id: string): Promise<PublishedTuneMetadata | null> {
+  if (hiddenTuneIds.has(id)) return null;
+
   try {
     const live = await loadPublishedTuneFromMain(id);
     if (live) return live;

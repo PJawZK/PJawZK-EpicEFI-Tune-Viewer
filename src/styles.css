@@ -3744,3 +3744,22 @@ footer {
     grid-template-columns: 1fr;
   }
 }
+
+
+.danger-zone {
+  border-color: #5f3d38;
+  background: #181311;
+}
+
+.open-button.danger {
+  border-color: #77473f;
+  color: #f1c5bb;
+  background: #2a1815;
+}
+
+.open-button.danger:hover:not(:disabled),
+.open-button.danger:focus-visible:not(:disabled) {
+  border-color: #a46155;
+  color: #ffe4dd;
+  background: #3a211d;
+}
