@@ -37,7 +37,7 @@ import {
   submitTuneToPublicService,
   type PublicSubmissionResult,
 } from './publicSubmission';
-import { assertValidTuneId } from './publicationPolicy';
+import { MAX_TUNE_ID_LENGTH, assertValidTuneId } from './publicationPolicy';
 
 type SubmitTuneProps = {
   navigate: (path: string) => void;
@@ -117,8 +117,36 @@ const fallbackIgnitionOptions = [
 
 const MAX_RAW_PACKAGE_BYTES = 64 * 1024 * 1024;
 const MAX_ZIP_BYTES = 128 * 1024 * 1024;
+
+const MAX_TITLE_LENGTH = 160;
 const MAX_SUMMARY_LENGTH = 1000;
+const MAX_AUTHOR_LENGTH = 120;
+const MAX_ECU_TARGET_LENGTH = 120;
+const MAX_FIRMWARE_SIGNATURE_LENGTH = 240;
+const MAX_VEHICLE_MAKE_LENGTH = 80;
+const MAX_VEHICLE_MODEL_LENGTH = 120;
+const MAX_VEHICLE_TRIM_LENGTH = 120;
+const MAX_ENGINE_MAKE_LENGTH = 80;
+const MAX_ENGINE_CODE_LENGTH = 120;
+const MAX_ASPIRATION_LENGTH = 120;
+const MAX_FUEL_LENGTH = 120;
+const MAX_IGNITION_LENGTH = 120;
+const MAX_TAGS = 20;
+const MAX_TAG_LENGTH = 48;
 const MAX_NOTES_LENGTH = 6000;
+const MAX_VERSION_LABEL_LENGTH = 120;
+
+function addTextLengthError(
+  errors: string[],
+  label: string,
+  value: string,
+  maxLength: number,
+): void {
+  const length = value.trim().length;
+  if (length > maxLength) {
+    errors.push(label + ' is too long (' + length + '/' + maxLength + ' characters).');
+  }
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -366,6 +394,7 @@ function TextField({
   required = false,
   type = 'text',
   step,
+  maxLength,
   disabled = false,
 }: {
   label: string;
@@ -375,6 +404,7 @@ function TextField({
   required?: boolean;
   type?: 'text' | 'number';
   step?: string;
+  maxLength?: number;
   disabled?: boolean;
 }) {
   return (
@@ -383,6 +413,7 @@ function TextField({
       <input
         type={type}
         step={step}
+        maxLength={maxLength}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
@@ -724,17 +755,43 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
       }
     }
 
-    const summaryLength = form.summary.trim().length;
-    if (summaryLength > MAX_SUMMARY_LENGTH) {
-      errors.push(
-        `Summary is too long (${summaryLength}/${MAX_SUMMARY_LENGTH} characters).`,
+    addTextLengthError(errors, 'Title', form.title, MAX_TITLE_LENGTH);
+    addTextLengthError(errors, 'Summary', form.summary, MAX_SUMMARY_LENGTH);
+    addTextLengthError(errors, 'Author', form.author, MAX_AUTHOR_LENGTH);
+    addTextLengthError(errors, 'ECU target', form.ecuTarget, MAX_ECU_TARGET_LENGTH);
+    addTextLengthError(errors, 'Vehicle make', form.vehicleMake, MAX_VEHICLE_MAKE_LENGTH);
+    addTextLengthError(errors, 'Vehicle model', form.vehicleModel, MAX_VEHICLE_MODEL_LENGTH);
+    addTextLengthError(errors, 'Vehicle trim', form.vehicleTrim, MAX_VEHICLE_TRIM_LENGTH);
+    addTextLengthError(errors, 'Engine make', form.engineMake, MAX_ENGINE_MAKE_LENGTH);
+    addTextLengthError(errors, 'Engine code', form.engineCode, MAX_ENGINE_CODE_LENGTH);
+    addTextLengthError(errors, 'Aspiration', form.aspiration, MAX_ASPIRATION_LENGTH);
+    addTextLengthError(errors, 'Fuel', form.fuel, MAX_FUEL_LENGTH);
+    addTextLengthError(errors, 'Ignition', form.ignition, MAX_IGNITION_LENGTH);
+    addTextLengthError(errors, 'Notes', form.notes, MAX_NOTES_LENGTH);
+    addTextLengthError(errors, 'Version label', form.versionLabel, MAX_VERSION_LABEL_LENGTH);
+
+    if (tune) {
+      addTextLengthError(
+        errors,
+        'Firmware signature',
+        tune.details.signature,
+        MAX_FIRMWARE_SIGNATURE_LENGTH,
       );
     }
 
-    const notesLength = form.notes.trim().length;
-    if (notesLength > MAX_NOTES_LENGTH) {
+    const tags = [...new Set(
+      form.tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+    )];
+    if (tags.length > MAX_TAGS) {
+      errors.push('Too many tags (' + tags.length + '/' + MAX_TAGS + ').');
+    }
+    const longTag = tags.find((tag) => tag.length > MAX_TAG_LENGTH);
+    if (longTag) {
       errors.push(
-        `Notes are too long (${notesLength}/${MAX_NOTES_LENGTH} characters).`,
+        'Tag "' + longTag + '" is too long (' + longTag.length + '/' + MAX_TAG_LENGTH + ' characters).',
       );
     }
 
@@ -745,6 +802,12 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
 
     const parentId = form.parentTuneId.trim();
     if (parentId) {
+      try {
+        assertValidTuneId(parentId, 'Parent tune ID');
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : 'Parent tune ID is invalid.');
+      }
+
       if (parentId === form.id.trim()) {
         errors.push('A tune cannot be its own lineage parent.');
       } else if (!catalogError && !existingIds.has(parentId)) {
@@ -1270,6 +1333,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <TextField
             label="Title"
             required
+            maxLength={MAX_TITLE_LENGTH}
             value={form.title}
             onChange={(value) => {
               update('title', value);
@@ -1281,6 +1345,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
             <TextField
               label="Tune ID"
               required
+              maxLength={MAX_TUNE_ID_LENGTH}
               value={form.id}
               onChange={(value) => {
                 setIdTouched(true);
@@ -1299,6 +1364,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <TextField
             label="Author / uploader"
             required
+            maxLength={MAX_AUTHOR_LENGTH}
             value={form.author}
             onChange={(value) => update('author', value)}
           />
@@ -1374,8 +1440,8 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
         </div>
 
         <div className="submit-grid four">
-          <TextField label="Vehicle make" value={form.vehicleMake} onChange={(value) => update('vehicleMake', value)} />
-          <TextField label="Vehicle model" value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
+          <TextField label="Vehicle make" maxLength={MAX_VEHICLE_MAKE_LENGTH} value={form.vehicleMake} onChange={(value) => update('vehicleMake', value)} />
+          <TextField label="Vehicle model" maxLength={MAX_VEHICLE_MODEL_LENGTH} value={form.vehicleModel} onChange={(value) => update('vehicleModel', value)} />
           <div className="submit-field">
             <label htmlFor="submit-model-year">Model year</label>
             <SelectMenu
@@ -1387,10 +1453,10 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
               options={modelYearOptions.map((year) => ({ value: year }))}
             />
           </div>
-          <TextField label="Trim / variant" value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
+          <TextField label="Trim / variant" maxLength={MAX_VEHICLE_TRIM_LENGTH} value={form.vehicleTrim} onChange={(value) => update('vehicleTrim', value)} />
 
-          <TextField label="Engine make" value={form.engineMake} onChange={(value) => update('engineMake', value)} />
-          <TextField label="Engine code" value={form.engineCode} onChange={(value) => update('engineCode', value)} />
+          <TextField label="Engine make" maxLength={MAX_ENGINE_MAKE_LENGTH} value={form.engineMake} onChange={(value) => update('engineMake', value)} />
+          <TextField label="Engine code" maxLength={MAX_ENGINE_CODE_LENGTH} value={form.engineCode} onChange={(value) => update('engineCode', value)} />
           <TextField label="Displacement (L)" type="number" step="0.01" value={form.displacementLiters} onChange={(value) => update('displacementLiters', value)} />
           <TextField label="Cylinders" type="number" value={form.cylinders} onChange={(value) => update('cylinders', value)} />
 
@@ -1460,6 +1526,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <div className="submit-field-lock">
             <TextField
               label="Version label"
+              maxLength={MAX_VERSION_LABEL_LENGTH}
               value={form.versionLabel}
               onChange={(value) => update('versionLabel', value)}
               placeholder="R2 / v2.1 / 2026-09 / ..."
@@ -1469,6 +1536,7 @@ export default function SubmitTune({ navigate, editId, revisionOfId }: SubmitTun
           <div className="submit-field-lock">
             <TextField
               label="Parent tune ID"
+              maxLength={MAX_TUNE_ID_LENGTH}
               value={form.parentTuneId}
               onChange={(value) => update('parentTuneId', slugify(value))}
               placeholder="Optional lineage parent"
