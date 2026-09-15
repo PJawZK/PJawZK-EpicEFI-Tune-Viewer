@@ -509,6 +509,24 @@ export default function PublishedTunePage({
             <button
               type="button"
               className="open-button secondary button-reset published-edit-button"
+              onClick={() => navigate(`/compare?a=${encodeURIComponent(metadata.id)}`)}
+            >
+              Compare tune
+            </button>
+            {metadata.parentTuneId && (
+              <button
+                type="button"
+                className="open-button secondary button-reset published-edit-button"
+                onClick={() => navigate(
+                  `/compare?a=${encodeURIComponent(metadata.parentTuneId!)}&b=${encodeURIComponent(metadata.id)}`,
+                )}
+              >
+                Compare with parent
+              </button>
+            )}
+            <button
+              type="button"
+              className="open-button secondary button-reset published-edit-button"
               onClick={() => navigate(`/t/${encodeURIComponent(metadata.id)}/edit`)}
             >
               Edit tune
