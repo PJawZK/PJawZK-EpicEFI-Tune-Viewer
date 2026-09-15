@@ -1,6 +1,6 @@
-import type { DefinitionRegistryEntry } from './definitionRegistry';
-import { parseFirmwareIdentity } from './firmwareIdentity';
-import type { ParsedIni } from './model';
+import type { DefinitionRegistryEntry } from './definitionRegistry.ts';
+import { parseFirmwareIdentity } from './firmwareIdentity.ts';
+import type { ParsedIni } from './model.ts';
 
 export type DefinitionDiffItem = {
   id: string;
