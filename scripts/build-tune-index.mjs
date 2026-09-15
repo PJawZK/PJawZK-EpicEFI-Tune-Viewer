@@ -12,6 +12,7 @@ import {
   assertMetadataMatchesFolderFiles,
   assertTuneFolderEntries,
 } from './tune-structure-policy.mjs';
+import { assertTuneLifecycleMetadata } from './tune-lifecycle-policy.mjs';
 
 const root = process.cwd();
 const tunesRoot = path.join(root, 'public', 'tunes');
@@ -280,25 +281,7 @@ async function loadTuneFolder(entry, definitionRegistry, validationAuthority) {
   expectString(tune, 'notes', context, true, TEXT_LIMITS.notes);
   expectString(tune, 'versionLabel', context, true, TEXT_LIMITS.versionLabel);
   expectString(tune, 'parentTuneId', context, true);
-  expectString(tune, 'lifecycleStatus', context, true);
-  expectString(tune, 'archivedAt', context, true);
-  expectString(tune, 'archiveReason', context, true, TEXT_LIMITS.archiveReason);
-
-  if (
-    tune.lifecycleStatus !== undefined
-    && tune.lifecycleStatus !== 'Archived'
-  ) {
-    fail(`${context}: lifecycleStatus must be exactly "Archived" when supplied.`);
-  }
-  if (tune.lifecycleStatus === 'Archived' && !tune.archivedAt) {
-    fail(`${context}: archived tunes must contain archivedAt.`);
-  }
-  if (
-    tune.lifecycleStatus !== 'Archived'
-    && (tune.archivedAt !== undefined || tune.archiveReason !== undefined)
-  ) {
-    fail(`${context}: archivedAt/archiveReason require lifecycleStatus "Archived".`);
-  }
+  assertTuneLifecycleMetadata(tune, context);
 
   if (tune.id !== entry.name) {
     fail(`${context}: "id" must exactly match its folder name "${entry.name}".`);

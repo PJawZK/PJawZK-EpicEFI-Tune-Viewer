@@ -4,6 +4,16 @@ import {
   loadRegisteredDefinition,
   type DefinitionRegistryEntry,
 } from './definitionRegistry';
+import {
+  compareDefinitions,
+  definitionDiffCount,
+  definitionDisplayLabel,
+  displayFirmwareRelease,
+  firmwareBuildDate,
+  previousRegisteredDefinitions,
+  type DefinitionDiff,
+  type DefinitionDiffItem,
+} from './definitionCompare';
 import { parseFirmwareIdentity } from './firmwareIdentity';
 import type { ParsedIni } from './model';
 import SelectMenu from './SelectMenu';
@@ -12,154 +22,6 @@ type DefinitionHubProps = {
   navigate: (path: string) => void;
 };
 
-
-type DefinitionDiffItem = {
-  id: string;
-  label: string;
-};
-
-type DefinitionDiff = {
-  addedSettings: DefinitionDiffItem[];
-  removedSettings: DefinitionDiffItem[];
-  changedSettings: DefinitionDiffItem[];
-  addedTables: DefinitionDiffItem[];
-  removedTables: DefinitionDiffItem[];
-  changedTables: DefinitionDiffItem[];
-  addedCurves: DefinitionDiffItem[];
-  removedCurves: DefinitionDiffItem[];
-  changedCurves: DefinitionDiffItem[];
-  addedDialogs: DefinitionDiffItem[];
-  removedDialogs: DefinitionDiffItem[];
-  changedDialogs: DefinitionDiffItem[];
-  addedMenus: DefinitionDiffItem[];
-  removedMenus: DefinitionDiffItem[];
-  changedMenus: DefinitionDiffItem[];
-};
-
-function firmwareBuildDate(entry: DefinitionRegistryEntry): string {
-  return parseFirmwareIdentity(entry.signature)?.date || entry.release?.trim() || '';
-}
-
-function displayRelease(entry: DefinitionRegistryEntry): string {
-  return firmwareBuildDate(entry) || 'Firmware date not recognized';
-}
-
-function definitionLabel(entry: DefinitionRegistryEntry): string {
-  return `${entry.ecuTarget} · ${displayRelease(entry)} · ${entry.label}`;
-}
-
-function fieldLabelMap(definition: ParsedIni): Map<string, string> {
-  const labels = new Map<string, string>();
-  for (const dialog of definition.dialogs) {
-    for (const field of dialog.fields) {
-      if (field.name && field.title && !labels.has(field.name)) {
-        labels.set(field.name, field.title);
-      }
-    }
-  }
-  return labels;
-}
-
-function diffNamedItems<T>(
-  left: T[],
-  right: T[],
-  idOf: (item: T) => string,
-  labelOf: (item: T) => string,
-): {
-  added: DefinitionDiffItem[];
-  removed: DefinitionDiffItem[];
-  changed: DefinitionDiffItem[];
-} {
-  const leftMap = new Map(left.map((item) => [idOf(item), item]));
-  const rightMap = new Map(right.map((item) => [idOf(item), item]));
-  const added: DefinitionDiffItem[] = [];
-  const removed: DefinitionDiffItem[] = [];
-  const changed: DefinitionDiffItem[] = [];
-
-  for (const [id, item] of rightMap) {
-    const before = leftMap.get(id);
-    if (!before) {
-      added.push({ id, label: labelOf(item) || id });
-      continue;
-    }
-    if (JSON.stringify(before) !== JSON.stringify(item)) {
-      changed.push({ id, label: labelOf(item) || id });
-    }
-  }
-
-  for (const [id, item] of leftMap) {
-    if (!rightMap.has(id)) {
-      removed.push({ id, label: labelOf(item) || id });
-    }
-  }
-
-  const sort = (items: DefinitionDiffItem[]) =>
-    items.sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
-
-  return {
-    added: sort(added),
-    removed: sort(removed),
-    changed: sort(changed),
-  };
-}
-
-function compareDefinitions(left: ParsedIni, right: ParsedIni): DefinitionDiff {
-  const leftLabels = fieldLabelMap(left);
-  const rightLabels = fieldLabelMap(right);
-
-  const settings = diffNamedItems(
-    left.constants,
-    right.constants,
-    (item) => item.name,
-    (item) => rightLabels.get(item.name) || leftLabels.get(item.name) || item.name,
-  );
-  const tables = diffNamedItems(
-    left.tables,
-    right.tables,
-    (item) => item.id,
-    (item) => item.title || item.id,
-  );
-  const curves = diffNamedItems(
-    left.curves,
-    right.curves,
-    (item) => item.id,
-    (item) => item.title || item.id,
-  );
-  const dialogs = diffNamedItems(
-    left.dialogs,
-    right.dialogs,
-    (item) => item.id,
-    (item) => item.title || item.id,
-  );
-  const menus = diffNamedItems(
-    left.menus,
-    right.menus,
-    (item) => item.id,
-    (item) => item.title || item.id,
-  );
-
-  return {
-    addedSettings: settings.added,
-    removedSettings: settings.removed,
-    changedSettings: settings.changed,
-    addedTables: tables.added,
-    removedTables: tables.removed,
-    changedTables: tables.changed,
-    addedCurves: curves.added,
-    removedCurves: curves.removed,
-    changedCurves: curves.changed,
-    addedDialogs: dialogs.added,
-    removedDialogs: dialogs.removed,
-    changedDialogs: dialogs.changed,
-    addedMenus: menus.added,
-    removedMenus: menus.removed,
-    changedMenus: menus.changed,
-  };
-}
-
-function diffCount(diff: DefinitionDiff): number {
-  return Object.values(diff).reduce((sum, items) => sum + items.length, 0);
-}
 
 function DiffPreview({
   diff,
@@ -193,15 +55,15 @@ function DiffPreview({
       <div className="definition-diff-heading">
         <div>
           <span>Baseline</span>
-          <strong>{definitionLabel(left)}</strong>
+          <strong>{definitionDisplayLabel(left)}</strong>
         </div>
         <div>
           <span>Comparison</span>
-          <strong>{definitionLabel(right)}</strong>
+          <strong>{definitionDisplayLabel(right)}</strong>
         </div>
         <div>
           <span>Total structural changes</span>
-          <strong>{diffCount(diff)}</strong>
+          <strong>{definitionDiffCount(diff)}</strong>
         </div>
       </div>
 
@@ -224,7 +86,7 @@ function DiffPreview({
         ))}
       </div>
 
-      {diffCount(diff) === 0 && (
+      {definitionDiffCount(diff) === 0 && (
         <p className="table-note">No structural INI definition changes were detected.</p>
       )}
     </div>
@@ -278,6 +140,23 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
     [definitions],
   );
 
+  const firmwareHistoryCoverage = useMemo(() => {
+    const dates = new Map<string, boolean>();
+    for (const entry of definitions) {
+      const date = firmwareBuildDate(entry);
+      if (!date) continue;
+      dates.set(date, Boolean(dates.get(date) || entry.firmwareChanges?.length));
+    }
+    return {
+      documented: [...dates.values()].filter(Boolean).length,
+      total: dates.size,
+      unresolved: [...dates.entries()]
+        .filter(([, documented]) => !documented)
+        .map(([date]) => date)
+        .sort(),
+    };
+  }, [definitions]);
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -308,26 +187,10 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
     [definitions],
   );
 
-  const previousBySignature = useMemo(() => {
-    const result = new Map<string, DefinitionRegistryEntry>();
-    const byTarget = new Map<string, DefinitionRegistryEntry[]>();
-
-    for (const entry of definitions) {
-      if (!firmwareBuildDate(entry)) continue;
-      const list = byTarget.get(entry.ecuTarget) ?? [];
-      list.push(entry);
-      byTarget.set(entry.ecuTarget, list);
-    }
-
-    for (const list of byTarget.values()) {
-      list.sort((a, b) => firmwareBuildDate(a).localeCompare(firmwareBuildDate(b)));
-      for (let index = 1; index < list.length; index += 1) {
-        result.set(list[index].signature, list[index - 1]);
-      }
-    }
-
-    return result;
-  }, [definitions]);
+  const previousBySignature = useMemo(
+    () => previousRegisteredDefinitions(definitions),
+    [definitions],
+  );
 
   async function runDefinitionCompare() {
     if (!compareA || !compareB || compareA === compareB) return;
@@ -457,6 +320,15 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
             <strong>{targets.length}</strong>
           </div>
           <div>
+            <span>Source history</span>
+            <strong>{firmwareHistoryCoverage.documented}/{firmwareHistoryCoverage.total}</strong>
+            {firmwareHistoryCoverage.unresolved.length > 0 && (
+              <small title="No source-backed release evidence has been catalogued for these milestones.">
+                Pending: {firmwareHistoryCoverage.unresolved.join(', ')}
+              </small>
+            )}
+          </div>
+          <div>
             <span>Visible results</span>
             <strong>{filtered.length}</strong>
           </div>
@@ -487,7 +359,7 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
                 { value: '', label: 'Choose baseline firmware…' },
                 ...sortedDefinitionOptions.map((entry) => ({
                   value: entry.signature,
-                  label: definitionLabel(entry),
+                  label: definitionDisplayLabel(entry),
                 })),
               ]}
             />
@@ -499,7 +371,7 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
                 { value: '', label: 'Choose comparison firmware…' },
                 ...sortedDefinitionOptions.map((entry) => ({
                   value: entry.signature,
-                  label: definitionLabel(entry),
+                  label: definitionDisplayLabel(entry),
                 })),
               ]}
             />
@@ -603,7 +475,7 @@ export default function DefinitionHub({ navigate }: DefinitionHubProps) {
               <div className="definition-history-summary">
                 <div>
                   <span>Firmware build date</span>
-                  <strong>{displayRelease(entry)}</strong>
+                  <strong>{displayFirmwareRelease(entry)}</strong>
                 </div>
                 <div>
                   <span>Branch / target</span>
