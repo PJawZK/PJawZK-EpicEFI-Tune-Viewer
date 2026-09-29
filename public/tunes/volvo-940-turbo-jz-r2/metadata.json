@@ -1,0 +1,38 @@
+{
+  "id": "volvo-940-turbo-jz-r2",
+  "title": "Volvo 940 Turbo JZ",
+  "summary": "Modified B230FK with M90 trans, running with MEGA144H7+Speeduino 0.4.3C+DCwerX Mosfets.\n13T",
+  "author": "JawZ",
+  "publishedAt": "2026-09-29",
+  "ecuTarget": "MEGA144H7",
+  "firmwareSignature": "rusEFI master.2026.08.26.MEGA144H7.2273317132",
+  "validationStatus": "Unverified",
+  "classification": "Normal",
+  "vehicle": {
+    "make": "Volvo",
+    "model": "940",
+    "year": 1997,
+    "trim": "Sedan"
+  },
+  "engine": {
+    "make": "B230FK",
+    "displacementLiters": 2.316,
+    "cylinders": 4,
+    "aspiration": "Turbocharged",
+    "compressionRatio": 9
+  },
+  "fuel": "E10",
+  "ignition": "Wasted Spark",
+  "injectorCc": 510,
+  "powerHp": 230,
+  "stockPowerHp": 135,
+  "boostBar": 0.8,
+  "tags": [],
+  "notes": "Volvo 940 Turbo LPT 1997, B230FK\n\nBlock; Crank - Stock\nRods - Stock\nPistons - Stock\nPiston Squirters - Yes\nOil pump - Stock\nOil pan - Stock\nCrank Pulley - Stock\nPump Drive Axle - Stock (No cast port for CAM signal)\n\nCylinderhead;\n530 Intake ports - Stage 1 ported\nExhaust ports - Stage 1 ported\nCamshaft - Volvo V camshaft\nValve Springs - Stock\nValve Retainers - Stock\nCooling passages - Drilled up Group A Rally ports\nThermostat port - Mild ported\nOil passages - Stock\nDecked - 0.6mm\nCombustion Chamber - Re-shaped with ~52cc volume\nCam gear - Stock\nCam Trigger - Yes DIY, on camshaft\n\nIgnition;\nDistribution - Wasted Spark (OEM VWAG 106B coil)\nCables - Silicone high insulation cables\nSpark Plugs - NGK BPR6ES, 0.6mm gap\nPowerstage - Built-in into coil pack\n\nFuel;\nFuel pump - Walbro 255 L/H\nInjectors - Bosch 550cc 0280158117\nFPR - Stock @3bar\nFuel lines - Stock\nFuel Filter - Mini 30 micron with replacable metal filter\nTank - Stock\nFuel rail - Stock\n\nIntake;\nManifold - Stock B230 LH 2.4\nCharge pipes - 2.5\" alu and silicone hoses\nIntercooler - 73mm thick 550x300x76 2.5\" piping, Bar & Plate\nTurbo Intake - Custom DIY Air Filter - Custom cold air intake filter, cold air through fenders\nThrottle Body - Audi A6 electric Idle control (65mm inner Ø)\n\nExhaust;\nTurbo - TD04-13T\nManifold - Stock 940\nExhaust system - Custom DIY 3\" Muffler - Biltema 3\" short Cat. - 3\" 100 cell race cat.\nO2 sensor - Innovate LC-1\nEGT - No\nBackpressure sensors - No",
+  "versionLabel": "R2",
+  "parentTuneId": "volvo-940-turbo-jz",
+  "files": {
+    "msq": "tune.msq",
+    "ini": "mainController.ini"
+  }
+}
